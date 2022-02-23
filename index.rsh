@@ -41,11 +41,11 @@ const p2 = Posn.fromTuple([1, 2]);
 // goal is the funds goal amount of currency.
 // Investors is a mapping of everyone who invested in the project.  It maps a users
 // address to a UInt of how much that user has invested.
-const Fund = Struct([
-  ["maturity", UInt], 
-  ["goal", UInt],
-  ["investors", map]
-]);
+// const Fund = Struct([
+//   ["maturity", UInt], 
+//   ["goal", UInt],
+//   ["investors", Map]
+// ]);
 
 
 // Define the fund_creator interface
@@ -75,7 +75,7 @@ const investor = {
 
 
 export const main = Reach.App(() => {
-  const Receiver = Participant('receiver', {
+  const Receiver = Participant('Receiver', {
     // Specify receiver's interact interface here
 
     // receiver inherits the fund_creator and common interfaces
@@ -102,34 +102,64 @@ export const main = Reach.App(() => {
     })),
 
   });
+  const Bystander = Participant('Bystander', {
+    // Specify Receiver's interact interface here
+    ...common,
+  });
 
 
   init();
 
-  // The first one to publish deploys the contract
-  Receiver.publish();
-  commit();
-
-  // States that this block of code is something that ONLY Funder
-  // performs.  This means that the variable 'investment' is known
-  // only to Funder.
   Funder.only(() => {
-
-    // Declassift the investment for transmission
-    const investment = declassify(interact.investment);
-
+    const {receiverAddr, payment, maturity, refund, dormant }
+      = declassify(interact.getParams());
   });
 
-  // The second one to publish always attaches
-  Funder.publish(investment)
-    .pay(investment);
+  // 1. The funder publishes the parameters of the fund and makes
+  // the initial deposit.
+  Funder.publish(receiverAddr, payment, maturity, refund, dormant )
+    .pay(payment);
 
-
-  transfer(investment).to(Receiver);
-
-  
+  // 2. The consensus remembers who the Receiver is. 
+  Receiver.set(receiverAddr);
   commit();
 
-  // write your program here
-  exit();
-});
+  // Uses each to run the same code block 'only' in each of the
+  // given participants.
+  each([Funder, Receiver, Bystander], () => {
+    interact.funded();
+  });
+
+  // 3. Everyone waits for the fund to mature
+  wait(relativeTime(maturity));
+
+  // Define the function as one that abstracts over who is permitted
+  // to extract the funds and whether there is a deadline.
+  const giveChance = (Who, then) => {
+    Who.only(() => interact.ready());
+
+    if(then){
+      Who.publish()
+        .timeout(relativeTime(then.deadline), () => then.after());
+    } else {
+      Who.publish();
+    }
+    transfer(payment).to(Who);
+    commit();
+    Who.only(() => interact.recvd(payment));
+    exit();
+  };
+
+  // abstract the duplicate copied repeated structure of the program
+  // into three calls to the same function.
+  giveChance(
+    Receiver,
+    { deadline: refund,
+      after: () =>
+      giveChance(
+        Funder,
+        { deadline: dormant,
+          after: () =>
+          giveChance(Bystander, false) })
+      }); });
+
