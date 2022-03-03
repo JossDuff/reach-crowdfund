@@ -51,7 +51,11 @@ const runDemo = async (delayReceiver, delayFunder) => {
         dormant: DORMANT,
       }),
     }),
-    backend.Receiver(ctcReceiver, common('Receiver', rDelay)),
+    backend.Receiver(ctcReceiver, {
+      ...common('Receiver', rDelay),
+      expiration: 10,
+      goal: 100,
+    }),
     backend.Bystander(ctcBystander, common('Bystander')),
   ]);
   for(const [who, acc] of [['Funder', funder], ['Receiver', receiver], ['Bystander', bystander]]) {
@@ -62,7 +66,7 @@ const runDemo = async (delayReceiver, delayFunder) => {
 
 };
 
-await runDemo(false, false);
-await runDemo(true, false);
+// await runDemo(false, false);
+// await runDemo(true, false);
 await runDemo(true, true);
 
