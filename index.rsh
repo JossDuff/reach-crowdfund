@@ -1,20 +1,3 @@
-/*
-Problem analysis
-
-1. Who is involved in this application?
-    The investor and the fund creator.  
-
-2. What information do they know at the start of the program?
-    The investor knows the maturity of the funds and the identity of the fund creator. 
-    fund creator knows the funding goal and fund maturity. 
-     
-3. What information are they going to discover and use in the program?
-
-
-4. What funds change ownership during the application and how?
-    
-*/
-
 
 'reach 0.1';
 
@@ -29,38 +12,11 @@ const common = {
   recvd: Fun([UInt], Null)
 };
 
-/*
-STRUCT REFERENCE
-const Posn = Struct([["x", UInt], ["y", UInt]]);
-const p1 = Posn.fromObject({x: 1, y: 2});
-const p2 = Posn.fromTuple([1, 2]);
-*/
-
-// Fund object.  Variables are given by fund_creator
-// TODO: change expiration from a UInt to a reach time function
-// goal is the funds goal amount of currency.
-// Investors is a mapping of everyone who invested in the project.  It maps a users
-// address to a UInt of how much that user has invested.
-const Fund = {
-  "expiration": UInt,
-  "goal": UInt,
-  //"investors": Map
-};
 
 
 export const main = Reach.App(() => {
   const Receiver = Participant('Receiver', {
     // Specify receiver's interact interface here
-
-    ...common,
-
-    // Takes fund parameters from front end
-    expiration: UInt,
-    goal: UInt,
-    
-  });
-  const Funder = Participant('Funder', {
-    // Specify Funder's interact interface here
 
     ...common,
 
@@ -72,7 +28,12 @@ export const main = Reach.App(() => {
       refund: UInt,
       dormant: UInt
     })),
+    
+  });
+  const Funder = Participant('Funder', {
+    // Specify Funder's interact interface here
 
+    ...common,
 
   });
   const Bystander = Participant('Bystander', {
@@ -83,38 +44,23 @@ export const main = Reach.App(() => {
 
   init();
 
-  Funder.only(() => {
+  Receiver.only(() => {
     const {receiverAddr, payment, maturity, refund, dormant }
       = declassify(interact.getParams());
   });
-  Receiver.only(() => {
 
-    // Declassify fund expiration and goal for fund object creation
-    // const expiration = declassify(interact.expiration);
-    // const goal = declassify(interact.goal);
-
-  });
 
   // 1. The funder publishes the parameters of the fund and makes
   // the initial deposit.
-  Funder.publish(receiverAddr, payment, maturity, refund, dormant )
-    .pay(payment);
-
-
-  // Create the fund object
-  // TODO: figure out how to put this in a loop or function callable
-  // by the frontend.
-  // Payments mapping for keeping track of who has invested and how much
-  //const payments = new Map(UInt);
-  // const fundInstance = {
-  //   "expiration": expiration,
-  //   "goal": goal,
-  //   //"investors": Map  
-  // };
-
+  Receiver.publish(receiverAddr, payment, maturity, refund, dormant );
 
   // 2. The consensus remembers who the Receiver is. 
-  Receiver.set(receiverAddr);
+  // Receiver.set(receiverAddr);
+  commit();
+
+  // The funder pays the amount specified by the receiver from frontend to the contract
+  Funder.pay(payment);
+
   commit();
 
   // Uses each to run the same code block 'only' in each of the
@@ -146,11 +92,11 @@ export const main = Reach.App(() => {
   // abstract the duplicate copied repeated structure of the program
   // into three calls to the same function.
   giveChance(
-    Receiver,
+    Funder,
     { deadline: refund,
       after: () =>
       giveChance(
-        Funder,
+        Receiver,
         { deadline: dormant,
           after: () =>
           giveChance(Bystander, false) })
