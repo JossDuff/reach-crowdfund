@@ -9,10 +9,17 @@
 const common = {
   funded: Fun([], Null),
   ready: Fun([], Null),
-  recvd: Fun([UInt], Null)
+  recvd: Fun([UInt], Null), 
+
+  // DEBUGGING function to return the balance of the contract at any point.
+  // Intending for it to be public and callable by anyone so putting it here for now.
+  // UInt is meant to be the result of the balance() function.  I'm assuming it's a UInt.
+  contBal: Fun([UInt], Null)
 };
 
-
+  // DEBUGGING: Paste wherever to check contract balance
+  // Prints the balance of the contract before any funds are paid.  Should be 0. ASSERT?
+  // Funder.interact.contBal(balance());
 
 export const main = Reach.App(() => {
   const Receiver = Participant('Receiver', {
@@ -26,7 +33,8 @@ export const main = Reach.App(() => {
       payment: UInt,
       maturity: UInt,
       refund: UInt,
-      dormant: UInt
+      dormant: UInt,
+      goal: UInt 
     })),
     
   });
@@ -50,11 +58,11 @@ export const main = Reach.App(() => {
   });
 
 
-  // 1. The funder publishes the parameters of the fund and makes
+  // The funder publishes the parameters of the fund and makes
   // the initial deposit.
   Receiver.publish(receiverAddr, payment, maturity, refund, dormant );
 
-  // 2. The consensus remembers who the Receiver is. 
+  // The consensus remembers who the Receiver is. 
   // Receiver.set(receiverAddr);
   commit();
 
@@ -66,6 +74,7 @@ export const main = Reach.App(() => {
   // Uses each to run the same code block 'only' in each of the
   // given participants.
   each([Funder, Receiver, Bystander], () => {
+
     interact.funded();
   });
 

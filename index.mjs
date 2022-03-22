@@ -8,11 +8,13 @@ const runDemo = async (delayReceiver, delayFunder) => {
 
   const startingBalance = stdlib.parseCurrency(100);  
 
-  const getBalance = async (who) => stdlib.formatCurrency(await stdlib.balanceOf(who), 4,);
+  // Helper function for holding the balance of a participant
+  const getBalance = async (who) => stdlib.formatCurrency(await stdlib.balanceOf(who), 4,); // Helper function for printing to console the balance of the contrac const contractBalance = async () =>  }
   
   const MATURITY = 10;
   const REFUND = 10;
   const DORMANT = 10;
+  const GOAL = 10;
   const fDelay = delayFunder ? MATURITY + REFUND + DORMANT + 1 : 0;
   const rDelay = delayReceiver ? MATURITY + REFUND + 1 : 0;
   console.log(`Begin demo with funder delay(${fDelay}) and receiver delay(${rDelay}).`);
@@ -29,7 +31,10 @@ const runDemo = async (delayReceiver, delayFunder) => {
       }
     },
     ready : async () => console.log(`${who} is ready to receive the funds.`),
-    recvd : async () => console.log(`${who} received the funds.`)
+    recvd : async () => console.log(`${who} received the funds.`),
+
+    // DEBUGGING.  Prints the current balance of the contract.  Argument is a UInt from the balance() function on backend.
+    contBal: async (contractBalance) => console.log(`Contract has a balance of ${contractBalance}`)
   });
 
   const receiver = await stdlib.newTestAccount(startingBalance);
@@ -40,6 +45,8 @@ const runDemo = async (delayReceiver, delayFunder) => {
   const ctcFunder = funder.contract(backend, ctcReceiver.getInfo());
   const ctcBystander = bystander.contract(backend, ctcReceiver.getInfo());
 
+
+
   await Promise.all([
     backend.Receiver(ctcReceiver, {
       ...common('Receiver', fDelay),
@@ -49,6 +56,7 @@ const runDemo = async (delayReceiver, delayFunder) => {
         maturity: MATURITY,
         refund: REFUND,
         dormant: DORMANT,
+        goal: GOAL,
       }),
     }),
     backend.Funder(ctcFunder, {
@@ -57,10 +65,14 @@ const runDemo = async (delayReceiver, delayFunder) => {
     }),
     backend.Bystander(ctcBystander, common('Bystander')),
   ]);
+
+
   for(const [who, acc] of [['Receiver', receiver], ['Funder', funder], ['Bystander', bystander]]) {
     let balance = await getBalance(acc);
     console.log(`${who} has a balance of ${balance}`);
   }
+
+
   console.log(`\n`);
 
 };
