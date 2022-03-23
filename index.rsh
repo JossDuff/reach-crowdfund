@@ -14,7 +14,7 @@ const common = {
   // DEBUGGING function to return the balance of the contract at any point.
   // Intending for it to be public and callable by anyone so putting it here for now.
   // UInt is meant to be the result of the balance() function.  I'm assuming it's a UInt.
-  contBal: Fun([UInt], Null)
+  // contBal: Fun([UInt], Null)
 };
 
   // DEBUGGING: Paste wherever to check contract balance
@@ -28,13 +28,13 @@ export const main = Reach.App(() => {
     ...common,
 
     // Gets the parameters of a fund
+    // By default, these values are local and private
     getParams: Fun([], Object({
       receiverAddr: Address,
-      payment: UInt,
       maturity: UInt,
       refund: UInt,
       dormant: UInt,
-      goal: UInt 
+      goal: UInt,
     })),
     
   });
@@ -43,48 +43,108 @@ export const main = Reach.App(() => {
 
     ...common,
 
+    // Get payment function.
+    // Returns a UInt from frontend representing the amount 
+    // of currency the funder wants to pay.
+    getPayment: Fun([], UInt),
+
   });
 
 
   init();
 
+  
+  // Turns local private values (values in object from getParams) 
+  // into local public values by using declassify.
   Receiver.only(() => {
-    const {receiverAddr, payment, maturity, refund, dormant }
-      = declassify(interact.getParams());
+    const {receiverAddr, maturity, refund, dormant, goal} = declassify(interact.getParams());
   });
 
 
-  // The funder publishes the parameters of the fund and makes
-  // the initial deposit.
-  Receiver.publish(receiverAddr, payment, maturity, refund, dormant );
+  // The funder publishes the parameters of the fund and makes the initial deposit.
+  // Publish initiates a consensus step and makes the values known to all participants
+  Receiver.publish(receiverAddr, maturity, refund, dormant, goal);
 
   // The consensus remembers who the Receiver is. 
   // Receiver.set(receiverAddr);
   commit();
 
-  // The funder pays the amount specified by the receiver from frontend to the contract
-  Funder.pay(payment);
+
+  // Turns local private value 'payment' (UInt that is returned from getPayment function)
+  // into a local public value by using declassify.
+  Funder.only(()=>{
+    const payment = declassify(interact.getPayment());
+  });
+
+  // Consensus step.  Makes 'payment' value known to all and Funder pays
+  // that amount to the contract.
+  Funder.publish(payment).pay(payment);
+
 
   commit();
 
   // Uses each to run the same code block 'only' in each of the
   // given participants.
   each([Funder, Receiver], () => {
-
     interact.funded();
   });
 
-  // 3. Everyone waits for the fund to mature
+  // Everyone waits for the fund to mature
   wait(relativeTime(maturity));
 
+  // TODO: It shouldn't matter who publishes this, is there any 
+  // advantage/disadvantage to the receiver doing this?
+  // Makes the variable contBal hold the current balance of the contract
+  Receiver.only(()=>{
+    const contBal = balance();
+  });
+  Receiver.publish(contBal);
+
+ 
+  // If the amount in the contract is greater than the goal amount, pay out to the receiver.
+  // TODO: I'm using the balance of the contract for now, but will have to change it to an 
+  // individual balance for each active fund.
+  if(contBal >= goal){
+    // Transfers the amount of the payment to the receiver (the fund creator).
+    transfer(payment).to(Receiver);
+
+    // Prints to console that the receiver received their payment
+    Receiver.only(()=>{
+      interact.recvd(payment);
+    });
+
+    commit();
+    
+    // TODO: might not want to exit here.  Put this here because I was trying to mimic
+    // the logic from the "giveChance" function in workshop-trust-fund
+    exit();
+  }
+  else{
+    // If the amount in the contract is less than the goal amount, pay back the funder.
+    transfer(payment).to(Funder);
+
+    // Prints to console that the funder received their payment
+    Funder.only(()=>{
+      interact.recvd(payment);
+    });
+
+    commit();
+
+    // TODO: might not want to exit here.  Put this here because I was trying to mimic
+    // the logic from the "giveChance" function in workshop-trust-fund
+    exit();
+  }
+
+  // Commented out portion from workshop-trust-fund
+  // This (along with the bystander which I also removed) deals with non-participation
+/*
   // Define the function as one that abstracts over who is permitted
   // to extract the funds and whether there is a deadline.
   const giveChance = (Who, then) => {
     Who.only(() => interact.ready());
 
     if(then){
-      Who.publish()
-        .timeout(relativeTime(then.deadline), () => then.after());
+      Who.publish().timeout(relativeTime(then.deadline), () => then.after());
     } else {
       Who.publish();
     }
@@ -95,11 +155,14 @@ export const main = Reach.App(() => {
   };
 
   // abstract the duplicate copied repeated structure of the program
-  // into three calls to the same function.
+  // into two calls to the same function.
   giveChance(
-    Funder,
+    Receiver,
     { deadline: refund,
       after: () =>
-      giveChance(Receiver, false)
-      }); });
+      giveChance(Funder, false)
+      });
+*/
+
+});
 

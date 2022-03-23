@@ -11,6 +11,7 @@ const runDemo = async (delayReceiver, delayFunder) => {
   // Helper function for holding the balance of a participant
   const getBalance = async (who) => stdlib.formatCurrency(await stdlib.balanceOf(who), 4,); // Helper function for printing to console the balance of the contrac const contractBalance = async () =>  }
   
+  const PAYMENT = 10;
   const MATURITY = 10;
   const REFUND = 10;
   const DORMANT = 10;
@@ -49,15 +50,20 @@ const runDemo = async (delayReceiver, delayFunder) => {
       ...common('Receiver', fDelay),
       getParams: () => ({
         receiverAddr: receiver.networkAccount,
-        payment: stdlib.parseCurrency(10),
         maturity: MATURITY,
         refund: REFUND,
         dormant: DORMANT,
         goal: GOAL,
       }),
+
     }),
     backend.Funder(ctcFunder, {
       ...common('Funder', rDelay),
+
+      // Funder specifies the amount that they want to pay
+      getPayment: () => {
+        return stdlib.parseCurrency(PAYMENT);
+      },
 
     }),
   ]);
