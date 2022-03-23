@@ -39,12 +39,9 @@ const runDemo = async (delayReceiver, delayFunder) => {
 
   const receiver = await stdlib.newTestAccount(startingBalance);
   const funder = await stdlib.newTestAccount(startingBalance);
-  const bystander = await stdlib.newTestAccount(startingBalance);
 
   const ctcReceiver = receiver.contract(backend);
   const ctcFunder = funder.contract(backend, ctcReceiver.getInfo());
-  const ctcBystander = bystander.contract(backend, ctcReceiver.getInfo());
-
 
 
   await Promise.all([
@@ -63,11 +60,10 @@ const runDemo = async (delayReceiver, delayFunder) => {
       ...common('Funder', rDelay),
 
     }),
-    backend.Bystander(ctcBystander, common('Bystander')),
   ]);
 
 
-  for(const [who, acc] of [['Receiver', receiver], ['Funder', funder], ['Bystander', bystander]]) {
+  for(const [who, acc] of [['Receiver', receiver], ['Funder', funder]]) {
     let balance = await getBalance(acc);
     console.log(`${who} has a balance of ${balance}`);
   }

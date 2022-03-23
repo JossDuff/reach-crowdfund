@@ -44,10 +44,6 @@ export const main = Reach.App(() => {
     ...common,
 
   });
-  const Bystander = Participant('Bystander', {
-    // Specify Receiver's interact interface here
-    ...common,
-  });
 
 
   init();
@@ -73,7 +69,7 @@ export const main = Reach.App(() => {
 
   // Uses each to run the same code block 'only' in each of the
   // given participants.
-  each([Funder, Receiver, Bystander], () => {
+  each([Funder, Receiver], () => {
 
     interact.funded();
   });
@@ -104,10 +100,6 @@ export const main = Reach.App(() => {
     Funder,
     { deadline: refund,
       after: () =>
-      giveChance(
-        Receiver,
-        { deadline: dormant,
-          after: () =>
-          giveChance(Bystander, false) })
+      giveChance(Receiver, false)
       }); });
 
