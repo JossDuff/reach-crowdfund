@@ -32,8 +32,6 @@ export const main = Reach.App(() => {
     getParams: Fun([], Object({
       receiverAddr: Address,
       maturity: UInt,
-      refund: UInt,
-      dormant: UInt,
       goal: UInt,
     })),
     
@@ -57,13 +55,13 @@ export const main = Reach.App(() => {
   // Turns local private values (values in object from getParams) 
   // into local public values by using declassify.
   Receiver.only(() => {
-    const {receiverAddr, maturity, refund, dormant, goal} = declassify(interact.getParams());
+    const {receiverAddr, maturity, goal} = declassify(interact.getParams());
   });
 
 
   // The funder publishes the parameters of the fund and makes the initial deposit.
   // Publish initiates a consensus step and makes the values known to all participants
-  Receiver.publish(receiverAddr, maturity, refund, dormant, goal);
+  Receiver.publish(receiverAddr, maturity, goal);
 
   // The consensus remembers who the Receiver is. 
   // Receiver.set(receiverAddr);
@@ -89,8 +87,10 @@ export const main = Reach.App(() => {
     interact.funded();
   });
 
+
   // Everyone waits for the fund to mature
   wait(relativeTime(maturity));
+
 
   // TODO: It shouldn't matter who publishes this, is there any 
   // advantage/disadvantage to the receiver doing this?
@@ -100,40 +100,40 @@ export const main = Reach.App(() => {
   });
   Receiver.publish(contBal);
 
+
+  // Helper function to pay funder and receiver after the maturity of the fund
+  const payOut = (Who) => {
+    // TODO: if it's the funder, then send back their payment, if it's the receiver, 
+    // pay the full amount that they raised.
+
+    // Sends the payment amount to Who
+    transfer(payment).to(Who);
+
+    // Prints to the console that Who received their payment
+    Who.only(()=>{
+      interact.recvd(payment);
+    });
+
+    commit();
+
+    // TODO: might not want to exit here.  Put this here because I was trying to mimic
+    // the logic from the "giveChance" function in workshop-trust-fund
+    exit();
+  };
  
-  // If the amount in the contract is greater than the goal amount, pay out to the receiver.
+
   // TODO: I'm using the balance of the contract for now, but will have to change it to an 
   // individual balance for each active fund.
+
+  // If the amount in the contract is greater than the goal amount, pay out to the receiver.
   if(contBal >= goal){
-    // Transfers the amount of the payment to the receiver (the fund creator).
-    transfer(payment).to(Receiver);
-
-    // Prints to console that the receiver received their payment
-    Receiver.only(()=>{
-      interact.recvd(payment);
-    });
-
-    commit();
-    
-    // TODO: might not want to exit here.  Put this here because I was trying to mimic
-    // the logic from the "giveChance" function in workshop-trust-fund
-    exit();
+    payOut(Receiver);
   }
   else{
-    // If the amount in the contract is less than the goal amount, pay back the funder.
-    transfer(payment).to(Funder);
-
-    // Prints to console that the funder received their payment
-    Funder.only(()=>{
-      interact.recvd(payment);
-    });
-
-    commit();
-
-    // TODO: might not want to exit here.  Put this here because I was trying to mimic
-    // the logic from the "giveChance" function in workshop-trust-fund
-    exit();
+    payOut(Funder);
   }
+
+
 
   // Commented out portion from workshop-trust-fund
   // This (along with the bystander which I also removed) deals with non-participation
