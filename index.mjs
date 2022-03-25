@@ -13,18 +13,15 @@ const runDemo = async (PAYMENT) => {
   
 
   const MATURITY = 10;
-  const GOAL = 10;
+  const GOAL = stdlib.parseCurrency(10);;
 
 
   const common = (who) => ({
 
-    // TODO: decide if I want these or not
     funded: async () => console.log(`${who} sees that the account is funded`),
-    ready : async () => console.log(`${who} is ready to receive the funds.`),
     recvd : async () => console.log(`${who} received the funds.`),
 
-    // TODO: Add a turnary function, if outcome is true -> fund met its goal, if false -> fund did not meet its goal.
-    seeOutcome: async (outcome) => console.log(`${who} saw outcome ${outcome}`),
+    seeOutcome: async (outcome) => console.log(`${who} saw that the ${outcome ? `fund met its goal` : `fund did not meet its goal`}`),
 
     // DEBUGGING.  Prints the current balance of the contract.  Argument is a UInt from the balance() function on backend.
     contBal: async (contractBalance) => console.log(`Contract has a balance of ${contractBalance}`)

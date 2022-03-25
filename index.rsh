@@ -8,7 +8,6 @@
 // received them.
 const common = {
   funded: Fun([], Null),
-  ready: Fun([], Null),
   recvd: Fun([UInt], Null), 
   seeOutcome: Fun([Bool], Null),
 
@@ -101,50 +100,49 @@ export const main = Reach.App(() => {
   });
   Receiver.publish(contBal);
 
-
-  // Helper function to pay funder and receiver after the maturity of the fund
-  const payOut = (Who) => {
-    // TODO: if it's the funder, then send back their payment, if it's the receiver, 
-    // pay the full amount that they raised.
-
-    
-    // Sends the payment amount to Who
-    transfer(payment).to(Who);
-
-    // Prints to the console that Who received their payment
-    Who.only(()=>{
-      interact.recvd(payment);
-    });
-
-    commit();
-
-
-  };
- 
-
+  // TODO: if it's the funder, then send back their payment, if it's the receiver, 
+  // pay the full amount that they raised.
   // TODO: I'm using the balance of the contract for now, but will have to change it to an 
   // individual balance for each active fund.
 
-  // If the amount in the contract is greater than the goal amount, pay out to the receiver.
   const fundExpire = () =>{
+    // If the amount in the contract is greater than the goal amount, pay out to the receiver.
     if(contBal >= goal){
-      payOut(Receiver);
       return true;
     }
     else{
-      payOut(Funder);
       return false;
     }
   };
 
+  // Outcome is set to true if fund met or exceeded its goal, false otherwise
   const outcome = fundExpire();
 
+  // Funder and Receiver indicate they see the outcome.
   each([Funder, Receiver], () => {
     interact.seeOutcome(outcome);
   });
 
-  // TODO: might not want to exit here.  Put this here because I was trying to mimic
-  // the logic from the "giveChance" function in workshop-trust-fund
+  // Initially had this as a function, but there was no reason for it to be a 
+  // function at the time.
+  if(outcome) { // True if the fund met its goal
+    transfer(payment).to(Receiver); // Pays the receiver
+    // Receiver indicates that they got paid.
+    Receiver.only(()=>{
+      interact.recvd(payment);
+    });
+  }
+  else{ // If the fund didn't meet its goal.
+    transfer(payment).to(Funder); // Pay the funder back
+    // Funder indicates that they got paid.
+    Funder.only(()=>{
+      interact.recvd(payment);
+    });
+  }
+
+  commit();
+
+
   exit();
 
 });
