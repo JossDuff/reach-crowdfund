@@ -10,6 +10,7 @@ const common = {
   funded: Fun([], Null),
   ready: Fun([], Null),
   recvd: Fun([UInt], Null), 
+  seeOutcome: Fun([Bool], Null),
 
   // DEBUGGING function to return the balance of the contract at any point.
   // Intending for it to be public and callable by anyone so putting it here for now.
@@ -106,6 +107,7 @@ export const main = Reach.App(() => {
     // TODO: if it's the funder, then send back their payment, if it's the receiver, 
     // pay the full amount that they raised.
 
+    
     // Sends the payment amount to Who
     transfer(payment).to(Who);
 
@@ -116,9 +118,7 @@ export const main = Reach.App(() => {
 
     commit();
 
-    // TODO: might not want to exit here.  Put this here because I was trying to mimic
-    // the logic from the "giveChance" function in workshop-trust-fund
-    exit();
+
   };
  
 
@@ -126,43 +126,26 @@ export const main = Reach.App(() => {
   // individual balance for each active fund.
 
   // If the amount in the contract is greater than the goal amount, pay out to the receiver.
-  if(contBal >= goal){
-    payOut(Receiver);
-  }
-  else{
-    payOut(Funder);
-  }
-
-
-
-  // Commented out portion from workshop-trust-fund
-  // This (along with the bystander which I also removed) deals with non-participation
-/*
-  // Define the function as one that abstracts over who is permitted
-  // to extract the funds and whether there is a deadline.
-  const giveChance = (Who, then) => {
-    Who.only(() => interact.ready());
-
-    if(then){
-      Who.publish().timeout(relativeTime(then.deadline), () => then.after());
-    } else {
-      Who.publish();
+  const fundExpire = () =>{
+    if(contBal >= goal){
+      payOut(Receiver);
+      return true;
     }
-    transfer(payment).to(Who);
-    commit();
-    Who.only(() => interact.recvd(payment));
-    exit();
+    else{
+      payOut(Funder);
+      return false;
+    }
   };
 
-  // abstract the duplicate copied repeated structure of the program
-  // into two calls to the same function.
-  giveChance(
-    Receiver,
-    { deadline: refund,
-      after: () =>
-      giveChance(Funder, false)
-      });
-*/
+  const outcome = fundExpire();
+
+  each([Funder, Receiver], () => {
+    interact.seeOutcome(outcome);
+  });
+
+  // TODO: might not want to exit here.  Put this here because I was trying to mimic
+  // the logic from the "giveChance" function in workshop-trust-fund
+  exit();
 
 });
 

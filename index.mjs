@@ -23,8 +23,12 @@ const runDemo = async (PAYMENT) => {
     ready : async () => console.log(`${who} is ready to receive the funds.`),
     recvd : async () => console.log(`${who} received the funds.`),
 
+    // TODO: Add a turnary function, if outcome is true -> fund met its goal, if false -> fund did not meet its goal.
+    seeOutcome: async (outcome) => console.log(`${who} saw outcome ${outcome}`),
+
     // DEBUGGING.  Prints the current balance of the contract.  Argument is a UInt from the balance() function on backend.
     contBal: async (contractBalance) => console.log(`Contract has a balance of ${contractBalance}`)
+
   });
 
   // Prints to console the amount that the funder intends to pay
