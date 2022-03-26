@@ -9,17 +9,12 @@
 const common = {
   funded: Fun([], Null),
   recvd: Fun([UInt], Null), 
-  seeOutcome: Fun([Bool], Null),
 
-  // DEBUGGING function to return the balance of the contract at any point.
-  // Intending for it to be public and callable by anyone so putting it here for now.
-  // UInt is meant to be the result of the balance() function.  I'm assuming it's a UInt.
-  // contBal: Fun([UInt], Null)
+  viewFundOutcome: Fun([], Null),
+  viewFundBal: Fun([UInt], Null), //TODO: check frontend implementation for full TODO.
+
 };
 
-  // DEBUGGING: Paste wherever to check contract balance
-  // Prints the balance of the contract before any funds are paid.  Should be 0. ASSERT?
-  // Funder.interact.contBal(balance());
 
 export const main = Reach.App(() => {
   const Receiver = Participant('Receiver', {
@@ -46,6 +41,14 @@ export const main = Reach.App(() => {
     // of currency the funder wants to pay.
     getPayment: Fun([], UInt),
 
+  });
+
+  // Fund view for showing fund balance and success status.
+  // Using a view here because fund balance and success staus
+  // changes throughout execution.
+  const vFund = View('Fund', {
+    balance: UInt,
+    success: Bool,
   });
 
 
@@ -78,6 +81,9 @@ export const main = Reach.App(() => {
   // that amount to the contract.
   Funder.publish(payment).pay(payment);
 
+  // Updates fund view to reflect the new balance of the fund.
+  vFund.balance.set(payment);
+
 
   commit();
 
@@ -91,23 +97,15 @@ export const main = Reach.App(() => {
   // Everyone waits for the fund to mature
   wait(relativeTime(maturity));
 
-
-  // TODO: It shouldn't matter who publishes this, is there any 
-  // advantage/disadvantage to the receiver doing this?
-  // Makes the variable contBal hold the current balance of the contract
-  Receiver.only(()=>{
-    const contBal = balance();
-  });
-  Receiver.publish(contBal);
-
   // TODO: if it's the funder, then send back their payment, if it's the receiver, 
   // pay the full amount that they raised.
   // TODO: I'm using the balance of the contract for now, but will have to change it to an 
   // individual balance for each active fund.
 
   const fundExpire = () =>{
+    // TODO: find out how to access vFund.balance here instead of balance()
     // If the amount in the contract is greater than the goal amount, pay out to the receiver.
-    if(contBal >= goal){
+    if(balance() >= goal){
       return true;
     }
     else{
@@ -115,12 +113,15 @@ export const main = Reach.App(() => {
     }
   };
 
-  // Outcome is set to true if fund met or exceeded its goal, false otherwise
+  // Outcome is set to true if fund met or exceeded its goal, false otherwise.
   const outcome = fundExpire();
+
+  // Updates fund success status.
+  vFund.success.set(outcome);
 
   // Funder and Receiver indicate they see the outcome.
   each([Funder, Receiver], () => {
-    interact.seeOutcome(outcome);
+    interact.viewFundOutcome();
   });
 
   // Initially had this as a function, but there was no reason for it to be a 
