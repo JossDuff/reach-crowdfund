@@ -10,8 +10,8 @@ const common = {
   funded: Fun([], Null),
   recvd: Fun([UInt], Null), 
 
-  viewFundOutcome: Fun([], Null),
-  viewFundBal: Fun([UInt], Null), //TODO: check frontend implementation for full TODO.
+  viewFundOutcome: Fun([Bool], Null),
+  //viewFundBal: Fun([UInt], Null), //TODO: check frontend implementation for full TODO.
 
 };
 
@@ -46,10 +46,10 @@ export const main = Reach.App(() => {
   // Fund view for showing fund balance and success status.
   // Using a view here because fund balance and success staus
   // changes throughout execution.
-  const vFund = View('Fund', {
-    balance: UInt,
-    success: Bool,
-  });
+  // const vFund = View('Fund', {
+  //   balance: UInt,
+  //   success: Bool,
+  // });
 
 
   init();
@@ -82,7 +82,7 @@ export const main = Reach.App(() => {
   Funder.publish(payment).pay(payment);
 
   // Updates fund view to reflect the new balance of the fund.
-  vFund.balance.set(payment);
+ // vFund.balance.set(payment);
 
 
   commit();
@@ -96,6 +96,14 @@ export const main = Reach.App(() => {
 
   // Everyone waits for the fund to mature
   wait(relativeTime(maturity));
+
+  // TODO: It shouldn't matter who publishes this, is there any 
+  // advantage/disadvantage to the receiver doing this?
+  // Makes the variable contBal hold the current balance of the contract
+  Receiver.only(()=>{
+    const contBal = balance();
+  });
+  Receiver.publish(contBal);
 
   // TODO: if it's the funder, then send back their payment, if it's the receiver, 
   // pay the full amount that they raised.
@@ -117,11 +125,11 @@ export const main = Reach.App(() => {
   const outcome = fundExpire();
 
   // Updates fund success status.
-  vFund.success.set(outcome);
+  //vFund.success.set(outcome);
 
   // Funder and Receiver indicate they see the outcome.
   each([Funder, Receiver], () => {
-    interact.viewFundOutcome();
+    interact.viewFundOutcome(outcome);
   });
 
   // Initially had this as a function, but there was no reason for it to be a 

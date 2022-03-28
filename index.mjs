@@ -21,13 +21,13 @@ const runDemo = async (PAYMENT) => {
     funded: async () => console.log(`${who} sees that the account is funded`),
     recvd : async () => console.log(`${who} received the funds.`),
 
-    viewFundOutcome: async () => console.log(`${who} saw that the ${v.Fund.success ? `fund met its goal` : `fund did not meet its goal`}`),
+    viewFundOutcome: async () => console.log(`${who} saw that the ${outcome ? `fund met its goal` : `fund did not meet its goal`}`),
 
     // TODO: I would like to be able to check the fund balance in the backend, but the
     // only way I can do this is by making this function to return the balance through
     // the front end.  Seems inefficient.  Need to find a way to access view variables
     // in backend.
-    viewFundBal: async () => v.Fund.balance,
+    //viewFundBal: async () => v.Fund.balance,
 
     // DEBUGGING.  Prints the current balance of the contract.  Argument is a UInt from the balance() function on backend.
     //contBal: async (contractBalance) => console.log(`Contract has a balance of ${contractBalance}`)
