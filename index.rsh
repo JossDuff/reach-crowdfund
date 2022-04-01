@@ -152,6 +152,21 @@ export const main = Reach.App(() => {
 
   commit();
 
+  const LHS =
+  parallelReduce(INIT_EXPR)
+  .define(() => DEFINE_BLOCK)
+  .invariant(INVARIANT_EXPR)
+  .while(COND_EXPR)
+  .paySpec(TOKENS_EXPR)
+  .case(PART_EXPR,
+    PUBLISH_EXPR,
+    PAY_EXPR,
+    CONSENSUS_EXPR)
+  .api(API_EXPR,
+    ASSUME_EXPR,
+    PAY_EXPR,
+    CONSENSUS_EXPR)
+  .timeout(DELAY_EXPR, () => TIMEOUT_BLOCK);
 
   exit();
 
