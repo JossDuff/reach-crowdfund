@@ -1,6 +1,8 @@
 
 'reach 0.1';
 
+import { Receiver } from "./build/index.main.mjs";
+
 // Common interface that has a series of signals for the different
 // phases of the application: one for when the account is funded,
 // one for when the particular participant is ready to extract
@@ -46,11 +48,12 @@ export const main = Reach.App(() => {
   // Fund view for showing fund balance and success status.
   // Using a view here because fund balance and success staus
   // changes throughout execution.
+/*
   const vFund = View('Fund', {
     balance: UInt,
     success: Bool,
   });
-
+*/
 
   init();
 
@@ -65,6 +68,68 @@ export const main = Reach.App(() => {
   // The funder publishes the parameters of the fund and makes the initial deposit.
   // Publish initiates a consensus step and makes the values known to all participants
   Receiver.publish(receiverAddr, maturity, goal);
+
+
+
+
+  // const LHS =
+  // parallelReduce(INIT_EXPR)
+  // .define(() => DEFINE_BLOCK)  // Optional
+  // .invariant(INVARIANT_EXPR)
+  // .while(COND_EXPR)
+  // .paySpec(TOKENS_EXPR)        // Optional
+  // .case(PART_EXPR,
+  //   PUBLISH_EXPR,
+  //   PAY_EXPR,
+  //   CONSENSUS_EXPR)
+  //  .api(API_EXPR,
+  //    ASSUME_EXPR,     optional block
+  //    PAY_EXPR,
+  //    CONSENSUS_EXPR)
+  // .timeout(DELAY_EXPR, () => TIMEOUT_BLOCK);
+
+  // Will probably need a map for keeping track of
+  // how much each person has funded. 
+  /*
+    const fundHistroy = new Map({
+      // If the account has funded the fund
+      funded = Bool,
+      // The total amount that a funder has funded.
+      totalFunded = UInt,
+    });
+  */
+  
+  const funders = new Map({
+    donation: Uint,
+  });
+
+  const [ keepGoing, fundBal ] =
+  // fundBal starts at 0 and keepGoing starts as true.
+  parallelReduce([ true, 0 ])
+    // Define block allows you to define variables that are used in all the different cases.
+    .define({});
+    // Loop invariant helps us know things that are true every time we enter and leave loop.
+    .invariant(
+      true
+      // Balance in the contract is at least as much as the total amount in the fund
+      && balance() >= fundBal
+    )
+    .while( keepGoing );
+    // absoluteTime means this maturity number
+    // is expressed in terms of actual blocks.
+    .timeout( absoluteTime(maturity), () => {
+      // TODO: maybe the receiver shouldn't publish this.  IDK.
+      Receiver.publish();
+      // returns false for keepGoing to stop the parallelReduce 
+      return [ false, fundBal]
+    });
+ 
+
+
+
+
+
+
 
   // The consensus remembers who the Receiver is. 
   // Receiver.set(receiverAddr);
@@ -83,6 +148,7 @@ export const main = Reach.App(() => {
 
   // Updates fund view to reflect the new balance of the fund.
  // vFund.balance.set(payment);
+
 
 
   commit();
@@ -152,21 +218,6 @@ export const main = Reach.App(() => {
 
   commit();
 
-  const LHS =
-  parallelReduce(INIT_EXPR)
-  .define(() => DEFINE_BLOCK)
-  .invariant(INVARIANT_EXPR)
-  .while(COND_EXPR)
-  .paySpec(TOKENS_EXPR)
-  .case(PART_EXPR,
-    PUBLISH_EXPR,
-    PAY_EXPR,
-    CONSENSUS_EXPR)
-  .api(API_EXPR,
-    ASSUME_EXPR,
-    PAY_EXPR,
-    CONSENSUS_EXPR)
-  .timeout(DELAY_EXPR, () => TIMEOUT_BLOCK);
 
   exit();
 
