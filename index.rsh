@@ -15,6 +15,8 @@ const common = {
   viewFundOutcome: Fun([Bool], Null),
   viewFundBal: Fun([UInt], Null), //TODO: check frontend implementation for full TODO.
 
+  // Anyone can call the timesUp function
+  timesUp: Fun([], Bool),
 };
 
 
@@ -33,16 +35,24 @@ export const main = Reach.App(() => {
     })),
     
   });
-  const Funder = Participant('Funder', {
-    // Specify Funder's interact interface here
+  // const Funder = Participant('Funder', {
+  //   // Specify Funder's interact interface here
 
+  //   ...common,
+
+  //   // Get payment function.
+  //   // Returns a UInt from frontend representing the amount 
+  //   // of currency the funder wants to pay.
+  //   getPayment: Fun([], UInt),
+
+  // });
+  const Funder = API ('Funder', {
     ...common,
-
-    // Get payment function.
-    // Returns a UInt from frontend representing the amount 
-    // of currency the funder wants to pay.
-    getPayment: Fun([], UInt),
-
+    // payFund function takes the amount that the funder wants
+    // to donate to the fund as a UInt.
+    // TODO: might also have to take an address to add to 
+    // the mapping?
+    donateToFund: Fun([UInt], Bool),
   });
 
   // Fund view for showing fund balance and success status.
@@ -99,24 +109,37 @@ export const main = Reach.App(() => {
     });
   */
   
-  const funders = new Map({
+  const funders = new Map(Object({
+    // I'm assuming this starts at 0
     donation: Uint,
-  });
+  }));
 
   const [ keepGoing, fundBal ] =
   // fundBal starts at 0 and keepGoing starts as true.
   parallelReduce([ true, 0 ])
     // Define block allows you to define variables that are used in all the different cases.
-    .define({});
+    //.define({});
     // Loop invariant helps us know things that are true every time we enter and leave loop.
     .invariant(
+      // true: mimicing RSPV example
       true
       // Balance in the contract is at least as much as the total amount in the fund
       && balance() >= fundBal
     )
-    .while( keepGoing );
+    .while( keepGoing )
+    .api(Funder.donateFund,
+      // Takes the payment as an argument and makes them pay that amount to contract.
+      // "Pay expression"
+      (payment) => payment,
+      // Increments the variable for keeping track of the total amount they paid.
+      (payment) => {
+        const thisDono = funders[this].donation + payment;
+        funders[this] = { donation: thisDono};
+      }
+    )
     // absoluteTime means this maturity number
     // is expressed in terms of actual blocks.
+    // Things in this block only happen after the deadline.
     .timeout( absoluteTime(maturity), () => {
       // TODO: maybe the receiver shouldn't publish this.  IDK.
       Receiver.publish();
