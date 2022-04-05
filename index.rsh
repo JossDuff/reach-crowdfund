@@ -33,6 +33,9 @@ export const main = Reach.App(() => {
       maturity: UInt,
       goal: UInt,
     })),
+
+    // For indicating to the frontend that the contract is deployed
+    ready: Fun([], Null),
     
   });
   // const Funder = Participant('Funder', {
@@ -79,6 +82,8 @@ export const main = Reach.App(() => {
   // Publish initiates a consensus step and makes the values known to all participants
   Receiver.publish(receiverAddr, maturity, goal);
 
+  // Signals to the frontend that the contract is ready
+  Receiver.interact.ready();
 
 
 
@@ -131,15 +136,18 @@ export const main = Reach.App(() => {
       // Takes the payment as an argument and makes them pay that amount to contract.
       // "Pay expression"
       (payment) => payment,
+
       // Increments the variable for keeping track of the total amount they paid.
       (payment) => {
+        // Adds the funder to the funders mapping
+        // TODO: add the funder if it's their first time funding
+        funders.insert(this);
         const thisDono = funders[this].donation + payment;
         funders[this] = { donation: thisDono};
       }
     )
-    // absoluteTime means this maturity number
-    // is expressed in terms of actual blocks.
-    // Things in this block only happen after the deadline.
+    // absoluteTime means this maturity number is expressed in terms of actual blocks.
+    // Things in this block only happen after the maturity.
     .timeout( absoluteTime(maturity), () => {
       // TODO: maybe the receiver shouldn't publish this.  IDK.
       Receiver.publish();
@@ -148,33 +156,22 @@ export const main = Reach.App(() => {
     });
  
 
-
-
-
-
-
-
-  // The consensus remembers who the Receiver is. 
-  // Receiver.set(receiverAddr);
   commit();
 
+  // // Turns local private value 'payment' (UInt that is returned from getPayment function)
+  // // into a local public value by using declassify.
+  // Funder.only(()=>{
+  //   const payment = declassify(interact.getPayment());
+  // });
 
-  // Turns local private value 'payment' (UInt that is returned from getPayment function)
-  // into a local public value by using declassify.
-  Funder.only(()=>{
-    const payment = declassify(interact.getPayment());
-  });
-
-  // Consensus step.  Makes 'payment' value known to all and Funder pays
-  // that amount to the contract.
-  Funder.publish(payment).pay(payment);
-
-  // Updates fund view to reflect the new balance of the fund.
- // vFund.balance.set(payment);
+  // // Consensus step.  Makes 'payment' value known to all and Funder pays
+  // // that amount to the contract.
+  // Funder.publish(payment).pay(payment);
 
 
 
-  commit();
+
+  //commit();
 
   // Uses each to run the same code block 'only' in each of the
   // given participants.
@@ -222,6 +219,12 @@ export const main = Reach.App(() => {
   });
 
 
+  // Helper function to be run on each element in funders Map
+  returnDonation = () => {
+    // Pays the funder back the amount they have donated to the contract
+    transfer(funders[this].donation).to(funders[this]);
+  };
+
   // Initially had this as a function, but there was no reason for it to be a 
   // function at the time.
   if(outcome) { // True if the fund met its goal
@@ -232,11 +235,15 @@ export const main = Reach.App(() => {
     });
   }
   else{ // If the fund didn't meet its goal.
-    transfer(payment).to(Funder); // Pay the funder back
+
+    // Runs returnDonation function on each element in the funders mapping
+    funders.forEach(returnDonation());
+
+    //transfer(payment).to(Funder); // Pay the funder back
     // Funder indicates that they got paid.
-    Funder.only(()=>{
-      interact.recvd(payment);
-    });
+    // Funder.only(()=>{
+    //   interact.recvd(payment);
+    // });
   }
 
   commit();

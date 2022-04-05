@@ -42,6 +42,8 @@ const runDemo = async (PAYMENT) => {
   const receiver = await stdlib.newTestAccount(startingBalance);
   const funder = await stdlib.newTestAccount(startingBalance);
 
+  const funders = await stdlib.newTestAccounts(5, startingBalance);
+
   // TODO: get a good understanding of what this is doing.  I get that it's attatching to the backend
   // but I don't know exactly what that means.
   const ctcReceiver = receiver.contract(backend);
