@@ -9,14 +9,14 @@ import { Receiver } from "./build/index.main.mjs";
 // the funds, and finally one for when they have successfully 
 // received them.
 const common = {
-  funded: Fun([], Null),
+  //funded: Fun([], Null), unsused
   recvd: Fun([UInt], Null), 
 
   viewFundOutcome: Fun([Bool], Null),
-  viewFundBal: Fun([UInt], Null), //TODO: check frontend implementation for full TODO.
 
   // Anyone can call the timesUp function
-  timesUp: Fun([], Bool),
+  // TODO: might have to use, but unused for now.
+  // timesUp: Fun([], Bool),
 };
 
 
@@ -85,39 +85,12 @@ export const main = Reach.App(() => {
   // Signals to the frontend that the contract is ready
   Receiver.interact.ready();
 
-
-
-  // const LHS =
-  // parallelReduce(INIT_EXPR)
-  // .define(() => DEFINE_BLOCK)  // Optional
-  // .invariant(INVARIANT_EXPR)
-  // .while(COND_EXPR)
-  // .paySpec(TOKENS_EXPR)        // Optional
-  // .case(PART_EXPR,
-  //   PUBLISH_EXPR,
-  //   PAY_EXPR,
-  //   CONSENSUS_EXPR)
-  //  .api(API_EXPR,
-  //    ASSUME_EXPR,     optional block
-  //    PAY_EXPR,
-  //    CONSENSUS_EXPR)
-  // .timeout(DELAY_EXPR, () => TIMEOUT_BLOCK);
-
-  // Will probably need a map for keeping track of
-  // how much each person has funded. 
-  /*
-    const fundHistroy = new Map({
-      // If the account has funded the fund
-      funded = Bool,
-      // The total amount that a funder has funded.
-      totalFunded = UInt,
-    });
-  */
+  const funders = new Map(Address, UInt);
   
-  const funders = new Map(Object({
-    // I'm assuming this starts at 0
-    donation: Uint,
-  }));
+  // const funders = new Map(Object({
+  //   // I'm assuming this starts at 0
+  //   donation: Uint,
+  // }));
 
   const [ keepGoing, fundBal ] =
   // fundBal starts at 0 and keepGoing starts as true.
@@ -140,10 +113,18 @@ export const main = Reach.App(() => {
       // Increments the variable for keeping track of the total amount they paid.
       (payment) => {
         // Adds the funder to the funders mapping
-        // TODO: add the funder if it's their first time funding
-        funders.insert(this);
-        const thisDono = funders[this].donation + payment;
-        funders[this] = { donation: thisDono};
+
+        // If it's the funders first time, add them and their donation to the mapping
+        if(!funders.member(this)){
+          funders.insert(this);
+          funders[this] = payment;
+        }
+        // Otherwise, they already are in the mapping so just update their payment
+        else {
+          const thisDono = funders[this] + payment;
+          funders[this] = thisDono;
+        }
+
       }
     )
     // absoluteTime means this maturity number is expressed in terms of actual blocks.
@@ -158,43 +139,11 @@ export const main = Reach.App(() => {
 
   commit();
 
-  // // Turns local private value 'payment' (UInt that is returned from getPayment function)
-  // // into a local public value by using declassify.
-  // Funder.only(()=>{
-  //   const payment = declassify(interact.getPayment());
-  // });
 
-  // // Consensus step.  Makes 'payment' value known to all and Funder pays
-  // // that amount to the contract.
-  // Funder.publish(payment).pay(payment);
-
-
-
-
-  //commit();
-
-  // Uses each to run the same code block 'only' in each of the
-  // given participants.
-  each([Funder, Receiver], () => {
-    interact.funded();
-  });
-
-
-  // Everyone waits for the fund to mature
-  wait(relativeTime(maturity));
-
-  // TODO: It shouldn't matter who publishes this, is there any 
-  // advantage/disadvantage to the receiver doing this?
-  // Makes the variable contBal hold the current balance of the contract
-  Receiver.only(()=>{
-    const contBal = balance();
-  });
-  Receiver.publish(contBal);
-
-  // TODO: if it's the funder, then send back their payment, if it's the receiver, 
-  // pay the full amount that they raised.
   // TODO: I'm using the balance of the contract for now, but will have to change it to an 
   // individual balance for each active fund.
+
+  // Runs after fund expires and parallel reduce is exited
 
   const fundExpire = () =>{
     // TODO: find out how to access vFund.balance here instead of balance()
@@ -210,9 +159,6 @@ export const main = Reach.App(() => {
   // Outcome is set to true if fund met or exceeded its goal, false otherwise.
   const outcome = fundExpire();
 
-  // Updates fund success status.
-  //vFund.success.set(outcome);
-
   // Funder and Receiver indicate they see the outcome.
   each([Funder, Receiver], () => {
     interact.viewFundOutcome(outcome);
@@ -221,14 +167,17 @@ export const main = Reach.App(() => {
 
   // Helper function to be run on each element in funders Map
   returnDonation = () => {
-    // Pays the funder back the amount they have donated to the contract
-    transfer(funders[this].donation).to(funders[this]);
+    // trying to return the UInt to each address in the mapping
+    transfer(funders[this]).to(this);
+
+    // TODO: add recvd to indicate to frontend that each funder received back 
+    // their donation
   };
 
   // Initially had this as a function, but there was no reason for it to be a 
   // function at the time.
   if(outcome) { // True if the fund met its goal
-    transfer(payment).to(Receiver); // Pays the receiver
+    transfer(balance()).to(Receiver); // Pays the receiver
     // Receiver indicates that they got paid.
     Receiver.only(()=>{
       interact.recvd(payment);
@@ -238,12 +187,6 @@ export const main = Reach.App(() => {
 
     // Runs returnDonation function on each element in the funders mapping
     funders.forEach(returnDonation());
-
-    //transfer(payment).to(Funder); // Pay the funder back
-    // Funder indicates that they got paid.
-    // Funder.only(()=>{
-    //   interact.recvd(payment);
-    // });
   }
 
   commit();
