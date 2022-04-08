@@ -1,8 +1,6 @@
 
 'reach 0.1';
 
-import { Receiver } from "./build/index.main.mjs";
-
 // Common interface that has a series of signals for the different
 // phases of the application: one for when the account is funded,
 // one for when the particular participant is ready to extract
@@ -105,25 +103,27 @@ export const main = Reach.App(() => {
       && balance() >= fundBal
     )
     .while( keepGoing )
-    .api(Funder.donateFund,
+    .api(Funder.donateToFund,
       // Takes the payment as an argument and makes them pay that amount to contract.
       // "Pay expression"
-      (payment) => payment,
+      (payment) => payment, 
 
       // Increments the variable for keeping track of the total amount they paid.
-      (payment) => {
+      (payment, k) => {
         // Adds the funder to the funders mapping
 
         // If it's the funders first time, add them and their donation to the mapping
-        if(!funders.member(this)){
-          funders.insert(this);
+        if(isNone(funders[this])){
           funders[this] = payment;
         }
         // Otherwise, they already are in the mapping so just update their payment
         else {
-          const thisDono = funders[this] + payment;
-          funders[this] = thisDono;
+          const oldDono = fromSome(funders[this], 0);
+          const newDono = oldDono + payment;
+          funders[this] = newDono;
         }
+        k(true);
+        return [ keepGoing, fundBal + payment ];
 
       }
     )
@@ -145,7 +145,8 @@ export const main = Reach.App(() => {
 
   // Runs after fund expires and parallel reduce is exited
 
-  const fundExpire = () =>{
+  // TODO: clean up by setting this function to outcome
+  const fundExpire = () => {
     // TODO: find out how to access vFund.balance here instead of balance()
     // If the amount in the contract is greater than the goal amount, pay out to the receiver.
     if(balance() >= goal){
@@ -159,20 +160,12 @@ export const main = Reach.App(() => {
   // Outcome is set to true if fund met or exceeded its goal, false otherwise.
   const outcome = fundExpire();
 
-  // Funder and Receiver indicate they see the outcome.
-  each([Funder, Receiver], () => {
-    interact.viewFundOutcome(outcome);
-  });
+  // // Funder and Receiver indicate they see the outcome.
+  // each([Funder, Receiver], () => {
+  //   interact.viewFundOutcome(outcome);
+  // });
 
-
-  // Helper function to be run on each element in funders Map
-  returnDonation = () => {
-    // trying to return the UInt to each address in the mapping
-    transfer(funders[this]).to(this);
-
-    // TODO: add recvd to indicate to frontend that each funder received back 
-    // their donation
-  };
+  // TODO: functions to pay back funders or receivers
 
   // Initially had this as a function, but there was no reason for it to be a 
   // function at the time.
@@ -185,8 +178,11 @@ export const main = Reach.App(() => {
   }
   else{ // If the fund didn't meet its goal.
 
+    // TODO: add recvd for each funder indicating they receiver their donation back.
     // Runs returnDonation function on each element in the funders mapping
-    funders.forEach(returnDonation());
+    funders.forEach((addr) => {
+      transfer(funders[addr].to(addr));
+    });
   }
 
   commit();

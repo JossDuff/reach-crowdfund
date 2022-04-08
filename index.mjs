@@ -12,7 +12,6 @@ const runDemo = async (GOAL) => {
   const FUNDMATURITY = 10;
   const FUNDGOAL = stdlib.parseCurrency(GOAL);
 
-
   const common = (who) => ({
 
     //funded: async () => console.log(`${who} sees that the account is funded`), unused
