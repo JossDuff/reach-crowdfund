@@ -6,6 +6,7 @@
 // one for when the particular participant is ready to extract
 // the funds, and finally one for when they have successfully 
 // received them.
+/*
 const common = {
   //funded: Fun([], Null), unsused
   recvd: Fun([UInt], Null), 
@@ -16,13 +17,14 @@ const common = {
   // TODO: might have to use, but unused for now.
   // timesUp: Fun([], Bool),
 };
+*/
 
 
 export const main = Reach.App(() => {
   const Receiver = Participant('Receiver', {
     // Specify receiver's interact interface here
 
-    ...common,
+    //...common,
 
     // Gets the parameters of a fund
     // By default, these values are local and private
@@ -36,35 +38,15 @@ export const main = Reach.App(() => {
     ready: Fun([], Null),
     
   });
-  // const Funder = Participant('Funder', {
-  //   // Specify Funder's interact interface here
-
-  //   ...common,
-
-  //   // Get payment function.
-  //   // Returns a UInt from frontend representing the amount 
-  //   // of currency the funder wants to pay.
-  //   getPayment: Fun([], UInt),
-
-  // });
   const Funder = API ('Funder', {
-    ...common,
+    //...common,
+    
     // payFund function takes the amount that the funder wants
     // to donate to the fund as a UInt.
     // TODO: might also have to take an address to add to 
     // the mapping?
     donateToFund: Fun([UInt], Bool),
   });
-
-  // Fund view for showing fund balance and success status.
-  // Using a view here because fund balance and success staus
-  // changes throughout execution.
-/*
-  const vFund = View('Fund', {
-    balance: UInt,
-    success: Bool,
-  });
-*/
 
   init();
 
@@ -84,11 +66,6 @@ export const main = Reach.App(() => {
   Receiver.interact.ready();
 
   const funders = new Map(Address, UInt);
-  
-  // const funders = new Map(Object({
-  //   // I'm assuming this starts at 0
-  //   donation: Uint,
-  // }));
 
   const [ keepGoing, fundBal ] =
   // fundBal starts at 0 and keepGoing starts as true.
@@ -109,7 +86,10 @@ export const main = Reach.App(() => {
       (payment) => payment, 
 
       // Increments the variable for keeping track of the total amount they paid.
-      (payment, k) => {
+      (payment, k) => { //removed k
+        // Indicates the api call was successful
+        k(true);
+        
         // Adds the funder to the funders mapping
 
         // If it's the funders first time, add them and their donation to the mapping
@@ -118,11 +98,13 @@ export const main = Reach.App(() => {
         }
         // Otherwise, they already are in the mapping so just update their payment
         else {
+          // Resolves the Maybe(UInt) from the mapping to a UInt
           const oldDono = fromSome(funders[this], 0);
           const newDono = oldDono + payment;
           funders[this] = newDono;
         }
-        k(true);
+
+        // has the parallel reduce keep going with the updated fundBal
         return [ keepGoing, fundBal + payment ];
 
       }
@@ -145,42 +127,32 @@ export const main = Reach.App(() => {
 
   // Runs after fund expires and parallel reduce is exited
 
-  // TODO: clean up by setting this function to outcome
-  const fundExpire = () => {
-    // TODO: find out how to access vFund.balance here instead of balance()
-    // If the amount in the contract is greater than the goal amount, pay out to the receiver.
+  // Outcome is set to true if fund met or exceeded its goal, false otherwise.
+  const outcome = () => {
     if(balance() >= goal){
       return true;
     }
     else{
       return false;
     }
-  };
-
-  // Outcome is set to true if fund met or exceeded its goal, false otherwise.
-  const outcome = fundExpire();
-
-  // // Funder and Receiver indicate they see the outcome.
-  // each([Funder, Receiver], () => {
-  //   interact.viewFundOutcome(outcome);
-  // });
+  }
 
   // TODO: functions to pay back funders or receivers
 
   // Initially had this as a function, but there was no reason for it to be a 
   // function at the time.
   if(outcome) { // True if the fund met its goal
+    Receiver.publish();
     transfer(balance()).to(Receiver); // Pays the receiver
-    // Receiver indicates that they got paid.
-    Receiver.only(()=>{
-      interact.recvd(payment);
-    });
+
   }
   else{ // If the fund didn't meet its goal.
-
-    // TODO: add recvd for each funder indicating they receiver their donation back.
-    // Runs returnDonation function on each element in the funders mapping
+    
+    // TODO: this probably won't work.  I want each funder to be able to retrieve their funds
+    // whenever they want.  When a funder calls the function it returns the funds associated
+    // with that funder.
     funders.forEach((addr) => {
+      addr.publish();
       transfer(funders[addr].to(addr));
     });
   }

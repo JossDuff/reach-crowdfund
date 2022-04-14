@@ -12,12 +12,14 @@ const runDemo = async (GOAL) => {
   const FUNDMATURITY = 10;
   const FUNDGOAL = stdlib.parseCurrency(GOAL);
 
+/*
   const common = (who) => ({
 
     //funded: async () => console.log(`${who} sees that the account is funded`), unused
     recvd : async () => console.log(`${who} received the funds.`),
     viewFundOutcome: async (outcome) => console.log(`${who} saw that the ${outcome ? `fund met its goal` : `fund did not meet its goal`}`),
   });
+*/
 
   // Prints to console the amount that the funder intends to pay
   console.log(`Fund goal is set to ${GOAL}.`);
@@ -31,7 +33,7 @@ const runDemo = async (GOAL) => {
 
   await Promise.all([
     backend.Receiver(ctcReceiver, {
-      ...common('Receiver'),
+//      ...common('Receiver'),
 
       // Receiver specifies the details of the fund
       getParams: () => ({
