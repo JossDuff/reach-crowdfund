@@ -12,6 +12,8 @@ const runDemo = async (GOAL) => {
   const FUNDMATURITY = 10;
   const FUNDGOAL = stdlib.parseCurrency(GOAL);
 
+  // Helper function for holding the balance of a participant
+  const getBalance = async (who) => stdlib.formatCurrency(await stdlib.balanceOf(who), 4,);
 /*
   const common = (who) => ({
 
@@ -45,12 +47,14 @@ const runDemo = async (GOAL) => {
     }),
   ]);
 
+  const ctcWho = (whoi) => users[whoi].contract(backend, ctcReceiver.getInfo());
+
   const donate = async (whoi, amount) => {
     const who = users[whoi];
     // Attatches the funder to the backend that the receiver deployed.
-    const ctc = who.contract(backend, ctcReceiver.getInfo);
+    const ctc = ctcWho(whoi);
     // Calls the donateToFund function from backend.
-    await ctc.apis.Funder.donateToFund(amount);
+    //await ctc.apis.Funder.donateToFund(amount);
     console.log(`${who} donated ${amount} to fund`);
   };
 
@@ -62,11 +66,13 @@ const runDemo = async (GOAL) => {
 
   // Waits for the fund to mature
   console.log(`Waiting for the fund to reach the deadline.`);
-  await stdlib.wait(FUNDMATURITY);
-  
+  //await stdlib.wait(FUNDMATURITY);
+
+
   // Prints the final balances of all accounts
-  for ( const who of [ accD, ...users ]) {
-    console.warn(who, 'has', stdlib.formatCurrency(await stdlib.balanceOf(who)));
+  for ( const acc of [ receiver, ...users ]) {
+    let balance = await getBalance(acc);
+    console.log(`${acc} has a balance of ${balance}`);
   }
 
   console.log(`\n`);

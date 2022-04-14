@@ -35,12 +35,12 @@ export const main = Reach.App(() => {
     })),
 
     // For indicating to the frontend that the contract is deployed
-    ready: Fun([], Null),
+    //ready: Fun([], Null),
     
   });
   const Funder = API ('Funder', {
     //...common,
-    
+
     // payFund function takes the amount that the funder wants
     // to donate to the fund as a UInt.
     // TODO: might also have to take an address to add to 
@@ -63,7 +63,7 @@ export const main = Reach.App(() => {
   Receiver.publish(receiverAddr, maturity, goal);
 
   // Signals to the frontend that the contract is ready
-  Receiver.interact.ready();
+  //Receiver.interact.ready();
 
   const funders = new Map(Address, UInt);
 
