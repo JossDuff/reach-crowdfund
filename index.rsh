@@ -1,45 +1,28 @@
 
 'reach 0.1';
 
-// Common interface that has a series of signals for the different
-// phases of the application: one for when the account is funded,
-// one for when the particular participant is ready to extract
-// the funds, and finally one for when they have successfully 
-// received them.
-/*
-const common = {
-  //funded: Fun([], Null), unsused
-  recvd: Fun([UInt], Null), 
-
-  viewFundOutcome: Fun([Bool], Null),
-
-  // Anyone can call the timesUp function
-  // TODO: might have to use, but unused for now.
-  // timesUp: Fun([], Bool),
-};
-*/
-
 
 export const main = Reach.App(() => {
   const Receiver = Participant('Receiver', {
+    ...hasConsoleLogger,
     // Specify receiver's interact interface here
-
-    //...common,
 
     // Gets the parameters of a fund
     // By default, these values are local and private
-    getParams: Fun([], Object({
-      receiverAddr: Address,
-      maturity: UInt,
-      goal: UInt,
-    })),
+    receiverAddr: Address,
+    deadline: UInt,
+    goal: UInt,
 
     // For indicating to the frontend that the contract is deployed
-    //ready: Fun([], Null),
+    ready: Fun([], Null),
+
+    // For indicating to the frotend that the fund has
+    // reached its deadline
+    timesUp: Fun([], Bool),
     
   });
   const Funder = API ('Funder', {
-    //...common,
+    
 
     // payFund function takes the amount that the funder wants
     // to donate to the fund as a UInt.
@@ -54,19 +37,27 @@ export const main = Reach.App(() => {
   // Turns local private values (values in object from getParams) 
   // into local public values by using declassify.
   Receiver.only(() => {
-    const {receiverAddr, maturity, goal} = declassify(interact.getParams());
+    const receiverAddr = declassify(interact.receiverAddr);
+    const deadline = declassify(interact.deadline);
+    const goal = declassify(interact.goal);
   });
-
 
   // The funder publishes the parameters of the fund and makes the initial deposit.
   // Publish initiates a consensus step and makes the values known to all participants
-  Receiver.publish(receiverAddr, maturity, goal);
+  Receiver.publish(receiverAddr, deadline, goal);
 
-  // Signals to the frontend that the contract is ready
-  //Receiver.interact.ready();
+  // Committing here so we can use relativeTime
+  commit();
+  Receiver.publish();
+
+  // Indicate to the frontend that the fund is ready
+  Receiver.interact.ready();
+  
+  const deadlineBlock = relativeTime(deadline);
 
   const funders = new Map(Address, UInt);
 
+  Receiver.interact.log("Entering parallelReduce");
   const [ keepGoing, fundBal ] =
   // fundBal starts at 0 and keepGoing starts as true.
   parallelReduce([ true, 0 ])
@@ -109,14 +100,16 @@ export const main = Reach.App(() => {
 
       }
     )
-    // absoluteTime means this maturity number is expressed in terms of actual blocks.
-    // Things in this block only happen after the maturity.
-    .timeout( absoluteTime(maturity), () => {
+    // absoluteTime means this deadline number is expressed in terms of actual blocks.
+    // Things in this block only happen after the deadline.
+    .timeout( deadlineBlock, () => {
       // TODO: maybe the receiver shouldn't publish this.  IDK.
       Receiver.publish();
       // returns false for keepGoing to stop the parallelReduce 
       return [ false, fundBal]
     });
+
+  Receiver.interact.log("Loop Exited.")
  
 
   commit();
@@ -136,6 +129,7 @@ export const main = Reach.App(() => {
       return false;
     }
   }
+  
 
   // TODO: functions to pay back funders or receivers
 
@@ -157,10 +151,11 @@ export const main = Reach.App(() => {
     });
   }
 
+  Receiver.interact.log("Backend exiting.");
+
   commit();
 
 
   exit();
 
 });
-

@@ -5,23 +5,14 @@ const stdlib = loadStdlib(process.env);
 
 const runDemo = async (GOAL) => {
 
-  const stdlib = await loadStdlib();
 
   const startingBalance = stdlib.parseCurrency(100);  
 
-  const FUNDMATURITY = 10;
+  const FUNDDEADLINE = 250;
   const FUNDGOAL = stdlib.parseCurrency(GOAL);
 
   // Helper function for holding the balance of a participant
   const getBalance = async (who) => stdlib.formatCurrency(await stdlib.balanceOf(who), 4,);
-/*
-  const common = (who) => ({
-
-    //funded: async () => console.log(`${who} sees that the account is funded`), unused
-    recvd : async () => console.log(`${who} received the funds.`),
-    viewFundOutcome: async (outcome) => console.log(`${who} saw that the ${outcome ? `fund met its goal` : `fund did not meet its goal`}`),
-  });
-*/
 
   // Prints to console the amount that the funder intends to pay
   console.log(`Fund goal is set to ${GOAL}.`);
@@ -35,15 +26,14 @@ const runDemo = async (GOAL) => {
 
   await Promise.all([
     backend.Receiver(ctcReceiver, {
-//      ...common('Receiver'),
-
+    ...stdlib.hasConsoleLogger,
       // Receiver specifies the details of the fund
-      getParams: () => ({
-        receiverAddr: receiver.networkAccount,
-        maturity: FUNDMATURITY,
-        goal: FUNDGOAL,
-      }),
+      
+      receiverAddr: receiver.networkAccount,
+      deadline: FUNDDEADLINE,
+      goal: FUNDGOAL,
 
+      ready : async () => console.log(`Fund is ready to receive donations.`),
     }),
   ]);
 
@@ -54,19 +44,19 @@ const runDemo = async (GOAL) => {
     // Attatches the funder to the backend that the receiver deployed.
     const ctc = ctcWho(whoi);
     // Calls the donateToFund function from backend.
-    //await ctc.apis.Funder.donateToFund(amount);
+    await ctc.apis.Funder.donateToFund(amount);
     console.log(`${who} donated ${amount} to fund`);
   };
 
 
   // Test account user 0 donates 10 currency to fund.
-  await donate(0, 10);
+  await donate(0, 1);
   // Test account user 1 donates 1 currency to fund. 
   await donate(1, 1);
 
   // Waits for the fund to mature
   console.log(`Waiting for the fund to reach the deadline.`);
-  //await stdlib.wait(FUNDMATURITY);
+  await stdlib.wait(FUNDDEADLINE);
 
 
   // Prints the final balances of all accounts
