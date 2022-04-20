@@ -1,4 +1,3 @@
-
 'reach 0.1';
 
 
@@ -22,13 +21,13 @@ export const main = Reach.App(() => {
     
   });
   const Funder = API ('Funder', {
-    
-
     // payFund function takes the amount that the funder wants
     // to donate to the fund as a UInt.
     // TODO: might also have to take an address to add to 
     // the mapping?
     donateToFund: Fun([UInt], Bool),
+
+    timesUp: Fun([], Bool),
   });
 
   init();
@@ -65,10 +64,8 @@ export const main = Reach.App(() => {
     //.define({});
     // Loop invariant helps us know things that are true every time we enter and leave loop.
     .invariant(
-      // true: mimicing RSPV example
-      true
       // Balance in the contract is at least as much as the total amount in the fund
-      && balance() >= fundBal
+      balance() >= fundBal
     )
     .while( keepGoing )
     .api(Funder.donateToFund,
@@ -104,7 +101,8 @@ export const main = Reach.App(() => {
     // Things in this block only happen after the deadline.
     .timeout( deadlineBlock, () => {
       // TODO: maybe the receiver shouldn't publish this.  IDK.
-      Receiver.publish();
+      const [ [], k ] = call(Funder.timesUp);
+      k(true);
       // returns false for keepGoing to stop the parallelReduce 
       return [ false, fundBal]
     });
