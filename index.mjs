@@ -52,7 +52,6 @@ const runDemo = async (GOAL) => {
   const ctcWho = (whoi) => users[whoi].contract(backend, ctcReceiver.getInfo());
 
   const donate = async (whoi, amount) => {
-    console.log(`${whoi} will donate ${amount}`)
     const who = users[whoi];
     // Attatches the funder to the backend that the receiver deployed.
     const ctc = ctcWho(whoi);
@@ -80,7 +79,7 @@ const runDemo = async (GOAL) => {
   // Prints the final balances of all accounts
   for ( const acc of [ receiver, ...users ]) {
     let balance = await getBalance(acc);
-    console.log(`${acc} has a balance of ${balance}`);
+    console.log(`${stdlib.formatAddress(acc)} has a balance of ${balance}`);
   }
 
   console.log(`\n`);

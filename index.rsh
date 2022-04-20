@@ -56,7 +56,6 @@ export const main = Reach.App(() => {
 
   const funders = new Map(Address, UInt);
 
-  Receiver.interact.log("Entering parallelReduce");
   const [ keepGoing, fundBal ] =
   // fundBal starts at 0 and keepGoing starts as true.
   parallelReduce([ true, 0 ])
@@ -106,9 +105,6 @@ export const main = Reach.App(() => {
       // returns false for keepGoing to stop the parallelReduce 
       return [ false, fundBal]
     });
-
-  Receiver.interact.log("Loop Exited.")
- 
 
   commit();
 
