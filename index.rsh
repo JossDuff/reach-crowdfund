@@ -14,20 +14,18 @@ export const main = Reach.App(() => {
 
     // For indicating to the frontend that the contract is deployed
     ready: Fun([], Null),
-
-    // For indicating to the frotend that the fund has
-    // reached its deadline
-    timesUp: Fun([], Bool),
-    
   });
   const Funder = API ('Funder', {
     // payFund function takes the amount that the funder wants
     // to donate to the fund as a UInt.
-    // TODO: might also have to take an address to add to 
-    // the mapping?
     donateToFund: Fun([UInt], Bool),
 
-    timesUp: Fun([], Bool),
+    // pays the funder back if the fund didn't reach the goal
+    payMeBack: Fun([], Bool),
+  });
+  // API that assumes the role of anybody
+  const Bystander = API ('Bystander', {
+    viewOutcome: Fun([Bool], Null),
   });
 
   init();
@@ -51,7 +49,7 @@ export const main = Reach.App(() => {
 
   // Indicate to the frontend that the fund is ready
   Receiver.interact.ready();
-  
+
   const deadlineBlock = relativeTime(deadline);
 
   const funders = new Map(Address, UInt);
@@ -99,55 +97,53 @@ export const main = Reach.App(() => {
     // absoluteTime means this deadline number is expressed in terms of actual blocks.
     // Things in this block only happen after the deadline.
     .timeout( deadlineBlock, () => {
-      // TODO: maybe the receiver shouldn't publish this.  IDK.
-      const [ [], k ] = call(Funder.timesUp);
-      k(true);
+      // Anybody is shorthand for a race.
+      Anybody.publish();
       // returns false for keepGoing to stop the parallelReduce 
       return [ false, fundBal]
     });
 
-  commit();
+  // Outcome is true if fund met or exceeded its goal
+  // Outcome is false if the fund did not meet its goal
+  const outcome = fundBal >= goal;
 
 
-  // TODO: I'm using the balance of the contract for now, but will have to change it to an 
-  // individual balance for each active fund.
-
-  // Runs after fund expires and parallel reduce is exited
-
-  // Outcome is set to true if fund met or exceeded its goal, false otherwise.
-  const outcome = () => {
-    if(balance() >= goal){
-      return true;
-    }
-    else{
-      return false;
-    }
-  }
-  
-
-  // TODO: functions to pay back funders or receivers
-
-  // Initially had this as a function, but there was no reason for it to be a 
-  // function at the time.
-  if(outcome) { // True if the fund met its goal
-    Receiver.publish();
+  // If outcome is true then fund met its goal, so 
+  // pay out to receiver
+  if(outcome) {
+    Receiver.interact.log("Fund met its goal")
     transfer(balance()).to(Receiver); // Pays the receiver
+    Receiver.interact.log("Transfering ", balance(), " to Receiver");
+    commit();
+    Receiver.interact.log("Backend exiting.");
+    exit();
+  }
+  // Otherwise, fund did not meet its goal and funds must
+  // be paid back
+  else {
+    Receiver.interact.log("Fund did not meet its goal.  Funders can receiver their money back");
+    const done = parallelReduce( false )
+      .invariant(balance() >= 0)
+      .while(! done && balance() >= 0)
+      .api(Funder.payMeBack, 
+        (k) => {
+          // Gets funders donation
+          const donation = fromSome(funders[this], 0);
+          // Returns donation to funder
+          transfer(donation).to(this);
+          // Resets their amount donated to 0
+          funders[this] = 0;
+          // indicates successful function
+          k(true);
+          // indicates loop isn't done yet
+          return false;
+        }
+      )
+  }
 
-  }
-  else{ // If the fund didn't meet its goal.
-    
-    // TODO: this probably won't work.  I want each funder to be able to retrieve their funds
-    // whenever they want.  When a funder calls the function it returns the funds associated
-    // with that funder.
-    funders.forEach((addr) => {
-      addr.publish();
-      transfer(funders[addr].to(addr));
-    });
-  }
+  commit();
 
   Receiver.interact.log("Backend exiting.");
-
-  commit();
 
 
   exit();

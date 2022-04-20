@@ -38,7 +38,7 @@ const runDemo = async (GOAL) => {
       ready: () => {
         console.log('The contract is ready');
         throw 42;
-      }
+      },
     });
   } catch (e) {
     if ( e !== 42) {
@@ -64,8 +64,6 @@ const runDemo = async (GOAL) => {
     await ctcReceiver.apis.Funder.timesUp();
   };
 
-
-  console.log("About to donate");
   // Test account user 0 donates 10 currency to fund.
   await donate(0, 10);
   // Test account user 1 donates 1 currency to fund. 
@@ -74,7 +72,8 @@ const runDemo = async (GOAL) => {
   // Waits for the fund to mature
   console.log(`Waiting for the fund to reach the deadline.`);
   await stdlib.wait(deadline);
-  await timesup();
+
+  //const outcome = 
 
   // Prints the final balances of all accounts
   for ( const acc of [ receiver, ...users ]) {
