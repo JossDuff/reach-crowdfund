@@ -21,12 +21,14 @@ export const main = Reach.App(() => {
     donateToFund: Fun([UInt], Bool),
 
     // pays the funder back if the fund didn't reach the goal
-    payMeBack: Fun([], Bool),
+    //payMeBack: Fun([], Bool),
   });
+/*
   // API that assumes the role of anybody
   const Bystander = API ('Bystander', {
     viewOutcome: Fun([Bool], Null),
   });
+*/
 
   init();
 
@@ -107,7 +109,9 @@ export const main = Reach.App(() => {
   // Outcome is false if the fund did not meet its goal
   const outcome = fundBal >= goal;
 
+  transfer(balance()).to(Receiver); // Pays the receiver
 
+/*
   // If outcome is true then fund met its goal, so 
   // pay out to receiver
   if(outcome) {
@@ -140,7 +144,7 @@ export const main = Reach.App(() => {
         }
       )
   }
-
+*/
   commit();
 
   Receiver.interact.log("Backend exiting.");
