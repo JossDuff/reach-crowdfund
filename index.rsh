@@ -21,8 +21,10 @@ export const main = Reach.App(() => {
     donateToFund: Fun([UInt], Bool),
 
     // pays the funder back if the fund didn't reach the goal
-    //payMeBack: Fun([], Bool),
+    payMeBack: Fun([], UInt),
   });
+  // Bystander role anyone can assume
+  const Bystander = API ('Bystander', {});
 /*
   // API that assumes the role of anybody
   const Bystander = API ('Bystander', {
@@ -70,7 +72,7 @@ export const main = Reach.App(() => {
     .api(Funder.donateToFund,
       // Takes the payment as an argument and makes them pay that amount to contract.
       // "Pay expression"
-      (payment) => payment, 
+      (payment) => payment,
 
       // Increments the variable for keeping track of the total amount they paid.
       (payment, k) => { //removed k
@@ -109,46 +111,48 @@ export const main = Reach.App(() => {
   // Outcome is false if the fund did not meet its goal
   const outcome = fundBal >= goal;
 
-  transfer(balance()).to(Receiver); // Pays the receiver
+  commit();
+  Receiver.publish();
 
-/*
-  // If outcome is true then fund met its goal, so 
-  // pay out to receiver
-  if(outcome) {
-    Receiver.interact.log("Fund met its goal")
+  if(outcome){
     transfer(balance()).to(Receiver); // Pays the receiver
-    Receiver.interact.log("Transfering ", balance(), " to Receiver");
     commit();
-    Receiver.interact.log("Backend exiting.");
     exit();
   }
-  // Otherwise, fund did not meet its goal and funds must
-  // be paid back
-  else {
-    Receiver.interact.log("Fund did not meet its goal.  Funders can receiver their money back");
-    const done = parallelReduce( false )
-      .invariant(balance() >= 0)
-      .while(! done && balance() >= 0)
-      .api(Funder.payMeBack, 
-        (k) => {
-          // Gets funders donation
-          const donation = fromSome(funders[this], 0);
-          // Returns donation to funder
-          transfer(donation).to(this);
-          // Resets their amount donated to 0
+
+  assert(outcome == false);
+
+  // TODO: might need to check if a caller didn't already donate
+  const [ done, fundsRemaining ] = 
+    parallelReduce([ false, fundBal ])
+    .invariant(balance() >= fundsRemaining)
+    .while( !done && fundsRemaining > 0 )
+    .api(Funder.payMeBack,
+      (k) => {
+
+        if(!isNone(funders[this])) {
+          const dono = fromSome(funders[this], 0);
+
+          // Transfers the amount a funder donated  
+          transfer(dono).to(this);
+
+          // Sets the funders donated amount to 0 after they
+          // receiver their funds back.
           funders[this] = 0;
-          // indicates successful function
-          k(true);
-          // indicates loop isn't done yet
-          return false;
+
+          // Return the UInt of how much was donated to funder
+          k(dono);  
+
+          return [ false, (fundsRemaining-dono)];
         }
-      )
-  }
-*/
+        else {
+          k(0);
+          return [ false, fundsRemaining ];
+        }
+      }
+    );
+  
   commit();
-
-  Receiver.interact.log("Backend exiting.");
-
 
   exit();
 
