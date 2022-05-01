@@ -21,7 +21,7 @@ export const main = Reach.App(() => {
     donateToFund: Fun([UInt], Bool),
 
     // pays the funder back if the fund didn't reach the goal
-    payMeBack: Fun([], UInt),
+    payMeBack: Fun([], Bool),
   });
   // Bystander role anyone can assume
   const Bystander = API ('Bystander', {});
@@ -56,7 +56,10 @@ export const main = Reach.App(() => {
 
   const deadlineBlock = relativeTime(deadline);
 
-  const funders = new Map(Address, UInt);
+  // New mapping to keep track of addresses that donate to the fund
+  // Default key value is Address
+  // Mapping of addresses to UInt
+  const funders = new Map(UInt);
 
   const [ keepGoing, fundBal ] =
   // fundBal starts at 0 and keepGoing starts as true.
@@ -125,32 +128,46 @@ export const main = Reach.App(() => {
   // TODO: might need to check if a caller didn't already donate
   const [ done, fundsRemaining ] = 
     parallelReduce([ false, fundBal ])
+    .define(() => {
+      const checkDonation = (who) => {
+        // Checks that the mapping exists
+//        require( !isNone(funders[who]), "Caller participated in fund." );
+        // Gets the UInt associated with the address in mapping
+        const dono = fromSome(funders[who], 0);
+//        require( dono != 0, "Caller has funds to claim.");
+        // Transfers the amount the funder donated
+        transfer(dono).to(who);
+        // Sets the amount the funder donated to 0 after they
+        // received their funds back
+        funders[who] = 0;
+        // Keeps loop going and returns the new fundsRemaining 
+        return [ done, fundsRemaining - dono ];
+      };
+    })
     .invariant(balance() >= fundsRemaining)
     .while( !done && fundsRemaining > 0 )
     .api(Funder.payMeBack,
       (k) => {
-
-        if(!isNone(funders[this])) {
-          const dono = fromSome(funders[this], 0);
-
-          // Transfers the amount a funder donated  
-          transfer(dono).to(this);
-
-          // Sets the funders donated amount to 0 after they
-          // receiver their funds back.
-          funders[this] = 0;
-
-          // Return the UInt of how much was donated to funder
-          k(dono);  
-
-          return [ false, (fundsRemaining-dono)];
-        }
-        else {
-          k(0);
-          return [ false, fundsRemaining ];
-        }
+        k(true);
+        return checkDonation(this);
       }
     );
+  
+  
+  /*
+  In the situation where someone sends currency to this contract address
+  by a simple transaction rather than by the donateToFund function
+  the contract balance would be higher than fundBal or fundRemaining.  
+  Since we can't prevent someone sending currency to an address, we will
+  consider all these "external" transactions as donations to the fund 
+  that don't expect to be paid back.  The amount left in the contract after
+  the payMeBack parallel reduce ends is the balance that was "externally" 
+  transferred to the contract and will be paid back to the funder.
+  */
+
+  // Any excess funds left over are considered "donations"
+  // to the fund that the receiver gets back.
+  transfer(balance()).to(Receiver);
   
   commit();
 
