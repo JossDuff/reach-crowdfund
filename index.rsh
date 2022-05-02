@@ -12,6 +12,9 @@ export const main = Reach.App(() => {
     deadline: UInt,
     goal: UInt,
 
+    // initial payment of the fund so there's gas to pay back funders
+    initialPayment: UInt,
+
     // For indicating to the frontend that the contract is deployed
     ready: Fun([], Null),
   });
@@ -23,14 +26,7 @@ export const main = Reach.App(() => {
     // pays the funder back if the fund didn't reach the goal
     payMeBack: Fun([], Bool),
   });
-  // Bystander role anyone can assume
-  const Bystander = API ('Bystander', {});
-/*
-  // API that assumes the role of anybody
-  const Bystander = API ('Bystander', {
-    viewOutcome: Fun([Bool], Null),
-  });
-*/
+
 
   init();
 
@@ -130,11 +126,9 @@ export const main = Reach.App(() => {
     parallelReduce([ false, fundBal ])
     .define(() => {
       const checkDonation = (who) => {
-        // Checks that the mapping exists
-//        require( !isNone(funders[who]), "Caller participated in fund." );
         // Gets the UInt associated with the address in mapping
         const dono = fromSome(funders[who], 0);
-//        require( dono != 0, "Caller has funds to claim.");
+        require( dono != 0, "Caller has funds to claim.");
         // Transfers the amount the funder donated
         transfer(dono).to(who);
         // Sets the amount the funder donated to 0 after they

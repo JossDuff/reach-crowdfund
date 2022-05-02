@@ -35,6 +35,7 @@ const runDemo = async (GOAL) => {
       receiverAddr: receiver.networkAccount,
       deadline: deadline,
       goal: FUNDGOAL,
+      
       ready: () => {
         console.log('The contract is ready');
         throw 42;
