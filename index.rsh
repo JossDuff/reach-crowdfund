@@ -74,7 +74,7 @@ export const main = Reach.App(() => {
       (payment) => payment,
 
       // Increments the variable for keeping track of the total amount they paid.
-      (payment, k) => { //removed k
+      (payment, k) => {
         // Indicates the api call was successful
         k(true);
         
@@ -128,7 +128,7 @@ export const main = Reach.App(() => {
       const checkDonation = (who) => {
         // Gets the UInt associated with the address in mapping
         const dono = fromSome(funders[who], 0);
-        require( dono != 0, "Caller has funds to claim.");
+//        require( dono != 0, "Caller has funds to claim.");
         // Transfers the amount the funder donated
         transfer(dono).to(who);
         // Sets the amount the funder donated to 0 after they
