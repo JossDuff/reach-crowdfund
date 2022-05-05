@@ -20,11 +20,12 @@ export const main = Reach.App(() => {
     donateToFund: Fun([UInt], Bool),
 
     // pays the funder back if the fund didn't reach the goal
-    //payMeBack: Fun([], Bool),
+//    payMeBack: Fun([], Bool),
   });
   // API that assumes the role of anybody
   const Bystander = API ('Bystander', {
     timesUp: Fun([], Bool),
+    printOutcome: Fun([], Bool),
     printFundBal: Fun([], UInt),
     printGoal: Fun([], UInt),
     printBalance: Fun([], UInt),
@@ -90,12 +91,9 @@ export const main = Reach.App(() => {
     // absoluteTime means this deadline number is expressed in terms of actual blocks.
     // Things in this block only happen after the deadline.
     .timeout( deadlineBlock, () => {
-      // Outcome is true if fund met or exceeded its goal
-      // Outcome is false if the fund did not meet its goal
-      const outcome = fundBal >= goal;
 
       const [ [], k ] = call(Bystander.timesUp);
-      k(outcome);
+      k(true);
 
       // returns false for keepGoing to stop the parallelReduce 
       return [ false, fundBal ]; 
@@ -103,23 +101,60 @@ export const main = Reach.App(() => {
 
   assert( fundBal <= balance() );
 
+  // Outcome is true if fund met or exceeded its goal
+  // Outcome is false if the fund did not meet its goal
+  const outcome = fundBal >= goal;
+
+  commit();
+
+  const [ [], u ] = call(Bystander.printOutcome);
+  u(outcome);
+
   commit();
 
   const [ [], j ] = call(Bystander.printFundBal);
   j(fundBal);
+
+  commit();
+
+  const [ [], p ] = call(Bystander.printBalance);
+  p(balance());
   
   commit();
 
   const [ [], o ] = call(Bystander.printGoal);
   o(goal);
 
+
+  const checkPayMeBack = (who) => {
+    check( !isNone(funders[who]), "Funder exists in mapping");
+    return () => {
+      const dono = fromSome(funders[who], 0);
+      transfer(dono).to(who);
+      funders.remove(who);
+    }
+  }
+
+/*
+  if(outcome) {
+    transfer(balance()).to(Receiver); // Pays the receiver
+    commit();
+    exit();
+  }
+
+  assert(outcome == false);
+  fork().api(Funder.payMeBack,
+    () => { const _ = checkPayMeBack(this); },
+    () => 0,
+    (k) => {
+      k(true);
+    }
+  );
+*/
+
+  transfer(balance()).to(Receiver);
   commit();
 
-  const [[], p] = call(Bystander.printBalance);
-  p(balance());
-
-  transfer(balance()).to(Receiver); // Pays the receiver
-  commit();
   exit();
 
 });

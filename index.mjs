@@ -59,8 +59,7 @@ const donate = async (whoi, amount) => {
 };
 const timesup = async () => {
   console.log('I think time is up');
-  const outcome = await ctcReceiver.apis.Bystander.timesUp();
-  console.log(`Fund ${outcome? `did` : `did not`} meet its goal.`);
+  await ctcReceiver.apis.Bystander.timesUp();
 };
 const printfundbal = async () => {
   const fundbal = await ctcReceiver.apis.Bystander.printFundBal();
@@ -74,11 +73,15 @@ const printbalance = async () => {
   const balance = await ctcReceiver.apis.Bystander.printBalance();
   console.log(`Contract balance: ${balance}`);
 };
+const printoutcome = async () => {
+  const outcome = await ctcReceiver.apis.Bystander.printOutcome();
+  console.log(`Fund ${outcome? `did` : `did not`} meet its goal.`);
+};
 
 // Test account user 0 donates 10 currency to fund.
-await donate(0, 10);
+await donate(0, 1);
 // Test account user 1 donates 1 currency to fund. 
-await donate(1, 1);
+await donate(1, 10);
 
 // Waits for the fund to mature
 console.log(`Waiting for the fund to reach the deadline.`);
@@ -86,9 +89,11 @@ await stdlib.wait(deadline);
 
 
 await timesup();
+await printoutcome();
 await printfundbal();
-await printgoal();
 await printbalance();
+await printgoal();
+
 
 // Prints the final balances of all accounts
 for ( const acc of [ receiver, ...users ]) {
