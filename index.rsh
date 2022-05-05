@@ -3,7 +3,6 @@
 
 export const main = Reach.App(() => {
   const Receiver = Participant('Receiver', {
-    ...hasConsoleLogger,
     // Specify receiver's interact interface here
 
     // Gets the parameters of a fund
@@ -23,12 +22,14 @@ export const main = Reach.App(() => {
     // pays the funder back if the fund didn't reach the goal
     //payMeBack: Fun([], Bool),
   });
-/*
   // API that assumes the role of anybody
   const Bystander = API ('Bystander', {
-    viewOutcome: Fun([Bool], Null),
+    timesUp: Fun([], Bool),
+    printFundBal: Fun([], UInt),
+    printGoal: Fun([], UInt),
+    printBalance: Fun([], UInt),
   });
-*/
+
 
   init();
 
@@ -60,7 +61,17 @@ export const main = Reach.App(() => {
   // fundBal starts at 0 and keepGoing starts as true.
   parallelReduce([ true, 0 ])
     // Define block allows you to define variables that are used in all the different cases.
-    //.define({});
+    .define(()=>{
+      const checkDonateToFund = (who, donation) => {
+        // TODO: allow funders to donate multiple times
+        check( isNone(funders[this]), "Not yet donated" );
+        return () => {
+          funders[who] = donation;
+          return [ keepGoing, (fundBal + donation) ];
+        };
+
+      };
+    })
     // Loop invariant helps us know things that are true every time we enter and leave loop.
     .invariant(
       // Balance in the contract is at least as much as the total amount in the fund
@@ -68,88 +79,47 @@ export const main = Reach.App(() => {
     )
     .while( keepGoing )
     .api(Funder.donateToFund,
-      // Takes the payment as an argument and makes them pay that amount to contract.
-      // "Pay expression"
-      (payment) => payment, 
-
-      // Increments the variable for keeping track of the total amount they paid.
-      (payment, k) => { //removed k
-        // Indicates the api call was successful
+      (payment) => { const _ = checkDonateToFund(this, payment); },
+      // Pay expression
+      (payment) => payment,
+      (payment, k) => {
         k(true);
-        
-        // Adds the funder to the funders mapping
-
-        // If it's the funders first time, add them and their donation to the mapping
-        if(isNone(funders[this])){
-          funders[this] = payment;
-        }
-        // Otherwise, they already are in the mapping so just update their payment
-        else {
-          // Resolves the Maybe(UInt) from the mapping to a UInt
-          const oldDono = fromSome(funders[this], 0);
-          const newDono = oldDono + payment;
-          funders[this] = newDono;
-        }
-
-        // has the parallel reduce keep going with the updated fundBal
-        return [ keepGoing, fundBal + payment ];
-
+        return checkDonateToFund(this, payment)();
       }
     )
     // absoluteTime means this deadline number is expressed in terms of actual blocks.
     // Things in this block only happen after the deadline.
     .timeout( deadlineBlock, () => {
-      // Anybody is shorthand for a race.
-      Anybody.publish();
+      // Outcome is true if fund met or exceeded its goal
+      // Outcome is false if the fund did not meet its goal
+      const outcome = fundBal >= goal;
+
+      const [ [], k ] = call(Bystander.timesUp);
+      k(outcome);
+
       // returns false for keepGoing to stop the parallelReduce 
-      return [ false, fundBal]
+      return [ false, fundBal ]; 
     });
 
-  // Outcome is true if fund met or exceeded its goal
-  // Outcome is false if the fund did not meet its goal
-  const outcome = fundBal >= goal;
+  assert( fundBal <= balance() );
 
-  transfer(balance()).to(Receiver); // Pays the receiver
-
-/*
-  // If outcome is true then fund met its goal, so 
-  // pay out to receiver
-  if(outcome) {
-    Receiver.interact.log("Fund met its goal")
-    transfer(balance()).to(Receiver); // Pays the receiver
-    Receiver.interact.log("Transfering ", balance(), " to Receiver");
-    commit();
-    Receiver.interact.log("Backend exiting.");
-    exit();
-  }
-  // Otherwise, fund did not meet its goal and funds must
-  // be paid back
-  else {
-    Receiver.interact.log("Fund did not meet its goal.  Funders can receiver their money back");
-    const done = parallelReduce( false )
-      .invariant(balance() >= 0)
-      .while(! done && balance() >= 0)
-      .api(Funder.payMeBack, 
-        (k) => {
-          // Gets funders donation
-          const donation = fromSome(funders[this], 0);
-          // Returns donation to funder
-          transfer(donation).to(this);
-          // Resets their amount donated to 0
-          funders[this] = 0;
-          // indicates successful function
-          k(true);
-          // indicates loop isn't done yet
-          return false;
-        }
-      )
-  }
-*/
   commit();
 
-  Receiver.interact.log("Backend exiting.");
+  const [ [], j ] = call(Bystander.printFundBal);
+  j(fundBal);
+  
+  commit();
 
+  const [ [], o ] = call(Bystander.printGoal);
+  o(goal);
 
+  commit();
+
+  const [[], p] = call(Bystander.printBalance);
+  p(balance());
+
+  transfer(balance()).to(Receiver); // Pays the receiver
+  commit();
   exit();
 
 });
