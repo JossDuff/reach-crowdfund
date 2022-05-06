@@ -148,73 +148,52 @@ export const main = Reach.App(() => {
 
   assert(outcome == false);
 
+  const deadlineBlockPayBack = relativeTime(deadline)
 
-/*
-var [ fundsRemaining, numFundersRemaining ] = [ fundBal, numFunders ];
-invariant(
-  balance()>=fundsRemaining
-  && fundersSet.Map.size() == numFunders
-);
-while (fundsRemaining > 0 && numFundersRemaining > 0){
-  commit();
-  fork().api(Funder.payMeBack,
-    () => { const _ = checkPayMeBack(this); },
-    () => 0,
-    (k) => {
-      k(true);
-      const dono = checkPayMeBack(this)();
-    }
-  );
-  [ fundsRemaining, numFundersRemaining ] = [ fundsRemaining-dono, numFundersRemaining-1 ]
-  continue;
-}
-*/
-const deadlineBlockPayBack = relativeTime(deadline)
-
-const [ keepGoingPayBack, fundsRemaining, numFundersRemaining ] =
-  parallelReduce([ true, fundBal, numFunders ])
-  .define(()=> {
-    const checkPayMeBack = (who) => {
-      check( !isNone(funders[who]), "Funder exists in mapping");
-      check( fundersSet.member(who), "Funder exists in set");
-      const amount = fromSome(funders[who], 0);
-      check( amount != 0, "Amount doesn't equal 0");
-      check(balance() >= amount);
-      return () => {
-        transfer(amount).to(who);
-        funders[who] = 0;
-        fundersSet.remove(who);
-        return [keepGoingPayBack, fundsRemaining-amount, numFunders-1];
+  const [ keepGoingPayBack, fundsRemaining, numFundersRemaining ] =
+    parallelReduce([ true, fundBal, numFunders ])
+    .define(()=> {
+      const checkPayMeBack = (who) => {
+        check( !isNone(funders[who]), "Funder exists in mapping");
+        check( fundersSet.member(who), "Funder exists in set");
+        const amount = fromSome(funders[who], 0);
+        check( amount != 0, "Amount doesn't equal 0");
+        check(balance() >= amount);
+        return () => {
+          transfer(amount).to(who);
+          funders[who] = 0;
+          fundersSet.remove(who);
+          return [keepGoingPayBack, fundsRemaining-amount, numFunders-1];
+        }
       }
-    }
-  })
-  .invariant(     
-    balance() >= fundsRemaining
-    //&& fundersSet.Map.size() == numFunders
-  )
-  .while( keepGoingPayBack && fundsRemaining > 0 && numFundersRemaining > 0)
-  .api(Funder.payMeBack,
-    () => {const _ = checkPayMeBack(this); },
-    () => 0,
-    (k) => {
+    })
+    .invariant(     
+      balance() >= fundsRemaining
+      //&& fundersSet.Map.size() == numFunders
+    )
+    .while( keepGoingPayBack && fundsRemaining > 0 && numFundersRemaining > 0)
+    .api(Funder.payMeBack,
+      () => {const _ = checkPayMeBack(this); },
+      () => 0,
+      (k) => {
+        k(true);
+        return checkPayMeBack(this)();
+      }
+    )
+    .timeout( deadlineBlockPayBack, () => {
+      const [ [], k] = call(Bystander.timesUpPayBack);
       k(true);
-      return checkPayMeBack(this)();
-    }
-  )
-  .timeout( deadlineBlockPayBack, () => {
-    const [ [], k] = call(Bystander.timesUpPayBack);
-    k(true);
-    return [false, fundsRemaining, numFundersRemaining]
-  });
+      return [false, fundsRemaining, numFundersRemaining]
+    });
 
+  commit();
+  const [ [], b ] = call(Bystander.printBalanceAgain);
+  b(balance());
 
   // FINAL EXTRA BALANCE
   transfer(balance()).to(Receiver);
   commit();
 
-  const [ [], b ] = call(Bystander.printBalanceAgain);
-  b(balance());
-  commit();
 
   exit();
 

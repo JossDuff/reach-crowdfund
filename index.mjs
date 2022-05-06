@@ -5,7 +5,7 @@ const stdlib = loadStdlib(process.env);
 
 const GOAL = stdlib.parseCurrency(10);
 
-const startingBalance = stdlib.parseCurrency(100, 4);  
+const startingBalance = stdlib.parseCurrency(100);  
 
 const deadline = 50;
 const FUNDGOAL = GOAL;
@@ -61,6 +61,10 @@ const timesup = async () => {
   console.log('I think time is up');
   await ctcReceiver.apis.Bystander.timesUp();
 };
+const timesuppayback = async () => {
+  console.log('I think time is up');
+  await ctcReceiver.apis.Bystander.timesUpPayBack();
+};
 const printfundbal = async () => {
   const fundbal = await ctcReceiver.apis.Bystander.printFundBal();
   console.log(`Fund balance: ${fundbal}`);
@@ -107,6 +111,11 @@ await printbalance();
 await printgoal();
 
 await paymeback(0);
+
+console.log(`Waiting for the end of the payBack period.`);
+await stdlib.wait(deadline);
+
+await timesuppayback();
 
 
 await printbalanceagain();
