@@ -1,6 +1,7 @@
 'reach 0.1';
 
 
+
 export const main = Reach.App(() => {
   const Receiver = Participant('Receiver', {
     // Specify receiver's interact interface here
@@ -109,6 +110,8 @@ export const main = Reach.App(() => {
 
   assert( fundBal <= balance() );
 
+
+
   // Outcome is true if fund met or exceeded its goal
   // Outcome is false if the fund did not meet its goal
   const outcome = fundBal >= goal;
@@ -137,7 +140,6 @@ export const main = Reach.App(() => {
 
 
 
-/*
   if(outcome) {
     transfer(balance()).to(Receiver); // Pays the receiver
     commit();
@@ -145,7 +147,6 @@ export const main = Reach.App(() => {
   }
 
   assert(outcome == false);
-*/
 
 
 /*
@@ -207,6 +208,7 @@ const [ keepGoingPayBack, fundsRemaining, numFundersRemaining ] =
   });
 
 
+  // FINAL EXTRA BALANCE
   transfer(balance()).to(Receiver);
   commit();
 

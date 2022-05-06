@@ -3,9 +3,9 @@ import * as backend from './build/index.main.mjs';
 const stdlib = loadStdlib(process.env);
 
 
-const GOAL = stdlib.parseCurrency(20);
+const GOAL = stdlib.parseCurrency(10);
 
-const startingBalance = stdlib.parseCurrency(100);  
+const startingBalance = stdlib.parseCurrency(100, 4);  
 
 const deadline = 50;
 const FUNDGOAL = GOAL;
@@ -91,9 +91,9 @@ const paymeback = async (whoi) => {
 };
 
 // Test account user 0 donates 10 currency to fund.
-await donate(0, stdlib.parseCurrency(10));
+await donate(0, stdlib.parseCurrency(5));
 // Test account user 1 donates 1 currency to fund. 
-await donate(1, stdlib.parseCurrency(1));
+await donate(1, stdlib.parseCurrency(3));
 
 // Waits for the fund to mature
 console.log(`Waiting for the fund to reach the deadline.`);
@@ -108,12 +108,6 @@ await printgoal();
 
 await paymeback(0);
 
-
-// Prints the final balances of all accounts
-for ( const acc of [ receiver, ...users ]) {
-  let balance = await getBalance(acc);
-  console.log(`${stdlib.formatAddress(acc)} has a balance of ${balance}`);
-}
 
 await printbalanceagain();
 
