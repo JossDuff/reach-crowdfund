@@ -148,7 +148,7 @@ export const main = Reach.App(() => {
 
   assert(outcome == false);
 
-  const deadlineBlockPayBack = relativeTime(deadline)
+  const deadlineBlockPayBack = relativeTime(deadline*2);
 
   const [ keepGoingPayBack, fundsRemaining, numFundersRemaining ] =
     parallelReduce([ true, fundBal, numFunders ])
@@ -181,12 +181,13 @@ export const main = Reach.App(() => {
       }
     )
     .timeout( deadlineBlockPayBack, () => {
-      const [ [], k] = call(Bystander.timesUpPayBack);
+      const [ [], k ] = call(Bystander.timesUpPayBack);
       k(true);
       return [false, fundsRemaining, numFundersRemaining]
     });
 
   commit();
+
   const [ [], b ] = call(Bystander.printBalanceAgain);
   b(balance());
 

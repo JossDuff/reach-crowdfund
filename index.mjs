@@ -63,7 +63,8 @@ const timesup = async () => {
 };
 const timesuppayback = async () => {
   console.log('I think time is up');
-  await ctcReceiver.apis.Bystander.timesUpPayBack();
+  const success = await ctcReceiver.apis.Bystander.timesUpPayBack();
+  console.log(`Finished timesuppayback function? ${success}`);
 };
 const printfundbal = async () => {
   const fundbal = await ctcReceiver.apis.Bystander.printFundBal();
@@ -111,14 +112,15 @@ await printbalance();
 await printgoal();
 
 await paymeback(0);
+await paymeback(1);
 
 console.log(`Waiting for the end of the payBack period.`);
-await stdlib.wait(deadline);
+await stdlib.wait(deadline*2);
 
-await timesuppayback();
 
 
 await printbalanceagain();
+
 
 // Prints the final balances of all accounts
 for ( const who of [ receiver, ...users ]) {
