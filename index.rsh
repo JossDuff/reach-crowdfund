@@ -20,7 +20,7 @@ export const main = Reach.App(() => {
     donateToFund: Fun([UInt], Bool),
 
     // pays the funder back if the fund didn't reach the goal
-//    payMeBack: Fun([], Bool),
+    payMeBack: Fun([], Bool),
   });
   // API that assumes the role of anybody
   const Bystander = API ('Bystander', {
@@ -29,6 +29,7 @@ export const main = Reach.App(() => {
     printFundBal: Fun([], UInt),
     printGoal: Fun([], UInt),
     printBalance: Fun([], UInt),
+    printBalanceAgain: Fun([], UInt),
   });
 
 
@@ -125,13 +126,19 @@ export const main = Reach.App(() => {
   const [ [], o ] = call(Bystander.printGoal);
   o(goal);
 
+  commit();
+
 
   const checkPayMeBack = (who) => {
     check( !isNone(funders[who]), "Funder exists in mapping");
     return () => {
+      const amount = balance();
+      transfer(amount).to(who);
+      /*
       const dono = fromSome(funders[who], 0);
       transfer(dono).to(who);
       funders.remove(who);
+*/
     }
   }
 
@@ -143,6 +150,8 @@ export const main = Reach.App(() => {
   }
 
   assert(outcome == false);
+*/
+
   fork().api(Funder.payMeBack,
     () => { const _ = checkPayMeBack(this); },
     () => 0,
@@ -150,9 +159,14 @@ export const main = Reach.App(() => {
       k(true);
     }
   );
-*/
+
+
 
   transfer(balance()).to(Receiver);
+  commit();
+
+  const [ [], b ] = call(Bystander.printBalanceAgain);
+  b(balance());
   commit();
 
   exit();

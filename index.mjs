@@ -11,7 +11,7 @@ const deadline = 50;
 const FUNDGOAL = GOAL;
 
 // Helper function for holding the balance of a participant
-const getBalance = async (who) => stdlib.formatCurrency(await stdlib.balanceOf(who), 4,);
+const getBalance = async (who) => stdlib.parseCurrency(await stdlib.balanceOf(who), 4,);
 
 // Prints to console the amount that the funder intends to pay
 console.log(`Fund goal is set to ${GOAL}.`);
@@ -45,7 +45,7 @@ try {
 }
 
 console.log("Making test accounts");
-const users = await stdlib.newTestAccounts(5, startingBalance);
+const users = await stdlib.newTestAccounts(2, startingBalance);
 
 const ctcWho = (whoi) => users[whoi].contract(backend, ctcReceiver.getInfo());
 
@@ -73,9 +73,21 @@ const printbalance = async () => {
   const balance = await ctcReceiver.apis.Bystander.printBalance();
   console.log(`Contract balance: ${balance}`);
 };
+const printbalanceagain = async () => {
+  const balance = await ctcReceiver.apis.Bystander.printBalanceAgain();
+  console.log(`Contract balance: ${balance}`);
+};
 const printoutcome = async () => {
   const outcome = await ctcReceiver.apis.Bystander.printOutcome();
   console.log(`Fund ${outcome? `did` : `did not`} meet its goal.`);
+};
+const paymeback = async (whoi) => {
+  const who = users[whoi];
+  // Attatches the funder to the backend that the receiver deployed.
+  const ctc = ctcWho(whoi);
+  // Calls the donateToFund function from backend.
+  console.log(stdlib.formatAddress(who), `Got their funds back`);
+  await ctc.apis.Funder.payMeBack();
 };
 
 // Test account user 0 donates 10 currency to fund.
@@ -94,6 +106,16 @@ await printfundbal();
 await printbalance();
 await printgoal();
 
+await paymeback(0);
+
+
+// Prints the final balances of all accounts
+for ( const acc of [ receiver, ...users ]) {
+  let balance = await getBalance(acc);
+  console.log(`${stdlib.formatAddress(acc)} has a balance of ${balance}`);
+}
+
+await printbalanceagain();
 
 // Prints the final balances of all accounts
 for ( const acc of [ receiver, ...users ]) {
