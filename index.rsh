@@ -99,6 +99,7 @@ export const main = Reach.App(() => {
       // returns false for keepGoing to stop the parallelReduce 
       return [ false, fundBal ]; 
     });
+  
 
   assert( fundBal <= balance() );
 
@@ -132,13 +133,9 @@ export const main = Reach.App(() => {
   const checkPayMeBack = (who) => {
     check( !isNone(funders[who]), "Funder exists in mapping");
     return () => {
-      const amount = balance();
+      const amount = fromSome(funders[who], 0);
       transfer(amount).to(who);
-      /*
-      const dono = fromSome(funders[who], 0);
-      transfer(dono).to(who);
       funders.remove(who);
-*/
     }
   }
 
@@ -159,8 +156,6 @@ export const main = Reach.App(() => {
       k(true);
     }
   );
-
-
 
   transfer(balance()).to(Receiver);
   commit();
