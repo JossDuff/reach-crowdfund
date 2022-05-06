@@ -27,11 +27,7 @@ export const main = Reach.App(() => {
   const Bystander = API ('Bystander', {
     timesUp: Fun([], Bool),
 //    timesUpPayBack: Fun([], Bool),
-    printOutcome: Fun([], Bool),
-    printFundBal: Fun([], UInt),
-    printGoal: Fun([], UInt),
-    printBalance: Fun([], UInt),
-    printBalanceAgain: Fun([], UInt),
+    getOutcome: Fun([], Bool),
   });
 
 
@@ -118,9 +114,10 @@ export const main = Reach.App(() => {
 
   commit();
 
-  const [ [], u ] = call(Bystander.printOutcome);
+  const [ [], u ] = call(Bystander.getOutcome);
   u(outcome);
 
+/*
   commit();
 
   const [ [], j ] = call(Bystander.printFundBal);
@@ -135,7 +132,7 @@ export const main = Reach.App(() => {
 
   const [ [], o ] = call(Bystander.printGoal);
   o(goal);
-
+*/
 
   if(outcome) {
     transfer(balance()).to(Receiver); // Pays the receiver
@@ -178,10 +175,12 @@ export const main = Reach.App(() => {
       }
     )
 
+/*
   commit();
 
   const [ [], b ] = call(Bystander.printBalanceAgain);
   b(balance());
+*/
 
   // FINAL EXTRA BALANCE
   transfer(balance()).to(Receiver);
