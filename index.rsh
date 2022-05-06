@@ -46,14 +46,12 @@ export const main = Reach.App(() => {
   // Publish initiates a consensus step and makes the values known to all participants
   Receiver.publish(receiverAddr, deadline, goal);
 
-  // Committing here so we can use relativeTime
   commit();
   Receiver.publish();
 
   // Indicate to the frontend that the fund is ready
   Receiver.interact.ready();
 
-  const deadlineBlock = relativeTime(deadline);
 
   const funders = new Map(Address, UInt);
   const fundersSet = new Set();
@@ -80,7 +78,6 @@ export const main = Reach.App(() => {
       // Balance in the contract is at least as much as the total amount in the fund
       balance() >= fundBal
       && fundersSet.Map.size() == numFunders
-//      && fundersSet.Map.size() == funders.size()
     )
     .while( keepGoing )
     .api(Funder.donateToFund,
@@ -94,7 +91,7 @@ export const main = Reach.App(() => {
     )
     // absoluteTime means this deadline number is expressed in terms of actual blocks.
     // Things in this block only happen after the deadline.
-    .timeout( deadlineBlock, () => {
+    .timeout( relativeTime(deadline), () => {
 
       const [ [], k ] = call(Bystander.timesUp);
       k(true);
