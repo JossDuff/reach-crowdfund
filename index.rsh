@@ -25,6 +25,7 @@ export const main = Reach.App(() => {
   // API that assumes the role of anybody
   const Bystander = API ('Bystander', {
     timesUp: Fun([], Bool),
+    timesUpPayBack: Fun([], Bool),
     printOutcome: Fun([], Bool),
     printFundBal: Fun([], UInt),
     printGoal: Fun([], UInt),
@@ -58,26 +59,31 @@ export const main = Reach.App(() => {
   const deadlineBlock = relativeTime(deadline);
 
   const funders = new Map(Address, UInt);
+  const fundersSet = new Set();
 
-  const [ keepGoing, fundBal ] =
+  const [ keepGoing, fundBal, numFunders ] =
   // fundBal starts at 0 and keepGoing starts as true.
-  parallelReduce([ true, 0 ])
+  parallelReduce([ true, 0, 0 ])
     // Define block allows you to define variables that are used in all the different cases.
     .define(()=>{
       const checkDonateToFund = (who, donation) => {
         // TODO: allow funders to donate multiple times
-        check( isNone(funders[this]), "Not yet donated" );
+        check( isNone(funders[this]), "Not yet in map" );
+        check( !fundersSet.member(who), "Not yet in set");
+        check( donation != 0, "Donation equals 0");
         return () => {
           funders[who] = donation;
-          return [ keepGoing, (fundBal + donation) ];
+          fundersSet.insert(who);
+          return [ keepGoing, fundBal + donation, numFunders + 1 ];
         };
-
       };
     })
     // Loop invariant helps us know things that are true every time we enter and leave loop.
     .invariant(
       // Balance in the contract is at least as much as the total amount in the fund
       balance() >= fundBal
+      && fundersSet.Map.size() == numFunders
+//      && fundersSet.Map.size() == funders.size()
     )
     .while( keepGoing )
     .api(Funder.donateToFund,
@@ -97,7 +103,7 @@ export const main = Reach.App(() => {
       k(true);
 
       // returns false for keepGoing to stop the parallelReduce 
-      return [ false, fundBal ]; 
+      return [ false, fundBal, numFunders ]; 
     });
   
 
@@ -127,17 +133,9 @@ export const main = Reach.App(() => {
   const [ [], o ] = call(Bystander.printGoal);
   o(goal);
 
-  commit();
 
 
-  const checkPayMeBack = (who) => {
-    check( !isNone(funders[who]), "Funder exists in mapping");
-    return () => {
-      const amount = fromSome(funders[who], 0);
-      transfer(amount).to(who);
-      funders.remove(who);
-    }
-  }
+
 
 /*
   if(outcome) {
@@ -149,13 +147,65 @@ export const main = Reach.App(() => {
   assert(outcome == false);
 */
 
+
+/*
+var [ fundsRemaining, numFundersRemaining ] = [ fundBal, numFunders ];
+invariant(
+  balance()>=fundsRemaining
+  && fundersSet.Map.size() == numFunders
+);
+while (fundsRemaining > 0 && numFundersRemaining > 0){
+  commit();
   fork().api(Funder.payMeBack,
     () => { const _ = checkPayMeBack(this); },
     () => 0,
     (k) => {
       k(true);
+      const dono = checkPayMeBack(this)();
     }
   );
+  [ fundsRemaining, numFundersRemaining ] = [ fundsRemaining-dono, numFundersRemaining-1 ]
+  continue;
+}
+*/
+const deadlineBlockPayBack = relativeTime(deadline)
+
+const [ keepGoingPayBack, fundsRemaining, numFundersRemaining ] =
+  parallelReduce([ true, fundBal, numFunders ])
+  .define(()=> {
+    const checkPayMeBack = (who) => {
+      check( !isNone(funders[who]), "Funder exists in mapping");
+      check( fundersSet.member(who), "Funder exists in set");
+      const amount = fromSome(funders[who], 0);
+      check( amount != 0, "Amount doesn't equal 0");
+      check(balance() >= amount);
+      return () => {
+        transfer(amount).to(who);
+        funders[who] = 0;
+        fundersSet.remove(who);
+        return [keepGoingPayBack, fundsRemaining-amount, numFunders-1];
+      }
+    }
+  })
+  .invariant(     
+    balance() >= fundsRemaining
+    //&& fundersSet.Map.size() == numFunders
+  )
+  .while( keepGoingPayBack && fundsRemaining > 0 && numFundersRemaining > 0)
+  .api(Funder.payMeBack,
+    () => {const _ = checkPayMeBack(this); },
+    () => 0,
+    (k) => {
+      k(true);
+      return checkPayMeBack(this)();
+    }
+  )
+  .timeout( deadlineBlockPayBack, () => {
+    const [ [], k] = call(Bystander.timesUpPayBack);
+    k(true);
+    return [false, fundsRemaining, numFundersRemaining]
+  });
+
 
   transfer(balance()).to(Receiver);
   commit();
