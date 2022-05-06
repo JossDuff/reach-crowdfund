@@ -1,6 +1,7 @@
 'reach 0.1';
 
 
+
 export const main = Reach.App(() => {
   const Receiver = Participant('Receiver', {
     // Specify receiver's interact interface here
@@ -25,6 +26,7 @@ export const main = Reach.App(() => {
   // API that assumes the role of anybody
   const Bystander = API ('Bystander', {
     timesUp: Fun([], Bool),
+    timesUpPayBack: Fun([], Bool),
     printOutcome: Fun([], Bool),
     printFundBal: Fun([], UInt),
     printGoal: Fun([], UInt),
@@ -103,6 +105,8 @@ export const main = Reach.App(() => {
 
   assert( fundBal <= balance() );
 
+
+
   // Outcome is true if fund met or exceeded its goal
   // Outcome is false if the fund did not meet its goal
   const outcome = fundBal >= goal;
@@ -127,19 +131,7 @@ export const main = Reach.App(() => {
   const [ [], o ] = call(Bystander.printGoal);
   o(goal);
 
-  commit();
 
-
-  const checkPayMeBack = (who) => {
-    check( !isNone(funders[who]), "Funder exists in mapping");
-    return () => {
-      const amount = fromSome(funders[who], 0);
-      transfer(amount).to(who);
-      funders.remove(who);
-    }
-  }
-
-/*
   if(outcome) {
     transfer(balance()).to(Receiver); // Pays the receiver
     commit();
@@ -147,16 +139,41 @@ export const main = Reach.App(() => {
   }
 
   assert(outcome == false);
-*/
 
-  fork().api(Funder.payMeBack,
-    () => { const _ = checkPayMeBack(this); },
-    () => 0,
-    (k) => {
+  const deadlineBlockPayBack = relativeTime(deadline);
+
+  const [ keepGoingPayBack, fundsRemaining ] =
+    parallelReduce( [ true, fundBal ] )
+    .define(()=> {
+      const checkPayMeBack = (who) => {
+        check( !isNone(funders[who]), "Funder exists in mapping");
+        check( fromSome(funders[who], 0) > 0, "Funder has a balance > 0")
+        return () => {
+          const amount = fromSome(funders[who], 0);
+          transfer(amount).to(who);
+          funders[who] = 0;
+          return [ keepGoingPayBack, (fundsRemaining - amount) ];
+        }
+      }
+    })
+    .invariant(fundsRemaining <= balance())
+    .while( fundsRemaining > 0 && keepGoingPayBack)
+    .api(Funder.payMeBack,
+      () => {const _ = checkPayMeBack(this); },
+      () => 0,
+      (k) => {
+        k(true);
+        return checkPayMeBack(this)();
+      }
+    )
+    .timeout( deadlineBlockPayBack, () => {
+      const [ [], k ] = call(Bystander.timesUpPayBack);
       k(true);
-    }
-  );
+      return [ keepGoingPayBack, fundsRemaining ];
+    });
 
+
+  // FINAL EXTRA BALANCE
   transfer(balance()).to(Receiver);
   commit();
 
