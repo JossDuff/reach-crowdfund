@@ -26,7 +26,7 @@ export const main = Reach.App(() => {
   // API that assumes the role of anybody
   const Bystander = API ('Bystander', {
     timesUp: Fun([], Bool),
-    timesUpPayBack: Fun([], Bool),
+//    timesUpPayBack: Fun([], Bool),
     printOutcome: Fun([], Bool),
     printFundBal: Fun([], UInt),
     printGoal: Fun([], UInt),
@@ -137,9 +137,6 @@ export const main = Reach.App(() => {
   o(goal);
 
 
-
-
-
   if(outcome) {
     transfer(balance()).to(Receiver); // Pays the receiver
     commit();
@@ -148,10 +145,10 @@ export const main = Reach.App(() => {
 
   assert(outcome == false);
 
-  const deadlineBlockPayBack = relativeTime(deadline*2);
+  //const deadlineBlockPayBack = relativeTime(deadline*2);
 
-  const [ keepGoingPayBack, fundsRemaining, numFundersRemaining ] =
-    parallelReduce([ true, fundBal, numFunders ])
+  const [ fundsRemaining, numFundersRemaining ] =
+    parallelReduce([ fundBal, numFunders ])
     .define(()=> {
       const checkPayMeBack = (who) => {
         check( !isNone(funders[who]), "Funder exists in mapping");
@@ -163,7 +160,7 @@ export const main = Reach.App(() => {
           transfer(amount).to(who);
           funders[who] = 0;
           fundersSet.remove(who);
-          return [keepGoingPayBack, fundsRemaining-amount, numFunders-1];
+          return [ fundsRemaining-amount, numFunders-1];
         }
       }
     })
@@ -171,7 +168,7 @@ export const main = Reach.App(() => {
       balance() >= fundsRemaining
       //&& fundersSet.Map.size() == numFunders
     )
-    .while( keepGoingPayBack && fundsRemaining > 0 && numFundersRemaining > 0)
+    .while( fundsRemaining > 0 && numFundersRemaining > 0)
     .api(Funder.payMeBack,
       () => {const _ = checkPayMeBack(this); },
       () => 0,
@@ -180,11 +177,6 @@ export const main = Reach.App(() => {
         return checkPayMeBack(this)();
       }
     )
-    .timeout( deadlineBlockPayBack, () => {
-      const [ [], k ] = call(Bystander.timesUpPayBack);
-      k(true);
-      return [false, fundsRemaining, numFundersRemaining]
-    });
 
   commit();
 

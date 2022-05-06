@@ -114,8 +114,8 @@ await printgoal();
 await paymeback(0);
 await paymeback(1);
 
-console.log(`Waiting for the end of the payBack period.`);
-await stdlib.wait(deadline*2);
+// console.log(`Waiting for the end of the payBack period.`);
+// await stdlib.wait(deadline*2);
 
 
 
