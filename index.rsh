@@ -171,13 +171,18 @@ export const main = Reach.App(() => {
         return checkPayMeBack(this)();
       }
     )
-
 /*
-  commit();
+    .timeout( relativeTime(deadlinePayBack), () => {
 
-  const [ [], b ] = call(Bystander.printBalanceAgain);
-  b(balance());
+      const [ [], k ] = call(Bystander.timesUpPayBack);
+      k(true);
+
+      // returns false for keepGoing to stop the parallelReduce 
+      return [ false, fundBal, numFunders ]; 
+    });
 */
+
+
 
   // FINAL EXTRA BALANCE
   transfer(balance()).to(Receiver);

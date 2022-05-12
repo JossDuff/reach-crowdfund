@@ -5,8 +5,6 @@ const stdlib = loadStdlib(process.env);
 
 const runDemo = async (GOAL) => {
 
- // const GOAL = stdlib.parseCurrency(100);
-
   const startingBalance = stdlib.parseCurrency(100);  
 
   const deadline = 50;
@@ -77,7 +75,7 @@ const runDemo = async (GOAL) => {
     const ctc = ctcWho(whoi);
     // Calls the donateToFund function from backend.
     await ctc.apis.Funder.payMeBack();
-    console.log(stdlib.formatAddress(who), `Got their funds back`);
+    console.log(stdlib.formatAddress(who), `got their funds back`);
   };
 
 
