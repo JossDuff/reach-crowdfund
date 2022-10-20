@@ -83,7 +83,6 @@ export const main = Reach.App(() => {
         // Checks that the funder hasn't donated yet
         // For some practice, try to implement functionality
         // for funders to donate multiple times.
-        //check( isNone(funders[this]), "Not yet in map" );
         check( !fundersSet.member(who), "Not yet in set");
         // Doesn't allow donations of 0
         check( donation != 0, "Donation equals 0");
